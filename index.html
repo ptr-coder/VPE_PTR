@@ -3,13 +3,20 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <style>
-    /* Force plein écran */
-    html,body{width:100%;height:100%;margin:0;padding:0;overflow:auto}
-   /* Force la hauteur réelle */
-html,body{min-height:100vh}
-iframe,embed,object{height:100vh !important}
-  </style>
+ <style>
+  /* Plein écran + défilement quand besoin */
+  html,body{
+    width:100%;
+    min-height:100vh;
+    margin:0;
+    padding:0;
+    overflow:auto;           /* ← barre verticale si contenu dépasse */
+  }
+  iframe,embed,object{
+    height:100vh !important;
+  }
+  /* Vos autres styles ici... */
+</style>
 </head>
 <body>
 <title>Gestion Compteurs Gaz – Visites</title>
@@ -673,7 +680,7 @@ function readImportCSV(inp){
   r.readAsText(inp.files[0],'UTF-8');
 }
 /* ----------  ENVOI VERS GOOGLE DRIVE  ---------- */
-const SCRIPT_URL = 'https://script.google.com/home/projects/19vztwoaMO5L90U2kqSJr7rnHdZwUFz_sh2c_9HpIP-1Q5G1QdH9pCoxQ/exec
+const SCRIPT_URL = 'https://script.google.com/home/projects/19vztwoaMO5L90U2kqSJr7rnHdZwUFz_sh2c_9HpIP-1Q5G1QdH9pCoxQ/exec';
 async function sendToGoogleDrive(){
   const all=[...db.prelim,...db.interv];
   if(!all.length){showAlert('Aucune donnée à envoyer');return;}
