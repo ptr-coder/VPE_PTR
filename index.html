@@ -1,714 +1,861 @@
-<applivpe html>
+<!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
- <style>
-  /* Plein écran + défilement quand besoin */
-  html,body{
-    width:100%;
-    min-height:100vh;
-    margin:0;
-    padding:0;
-    overflow:auto;           /* ← barre verticale si contenu dépasse */
-  }
-  iframe,embed,object{
-    height:100vh !important;
-  }
-  /* Vos autres styles ici... */
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VPE Compteur GAZ - Gestion des interventions</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+        }
+    </style>
 </head>
-<body>
-<title>Gestion Compteurs Gaz – Visites</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<style>/* CENTRAGE + largeur liste */
-#listTable th,#listTable td{text-align:center;vertical-align:middle}
-#listTable input{text-align:center}
-.page{max-width:1400px}
-#listTable{width:100%;font-size:15px}
-#listTable th,#listTable td{padding:10px 12px}
-#listTable th:nth-child(3),#listTable td:nth-child(3){min-width:180px}
-/* couleurs & autres */
-:root{--clr:#2c3e50;--accent:#3498db;--danger:#e74c3c;--ok:#27ae60;
-       --clr-removed:#e74c3c;--clr-installed:#27ae60;--bg-removed:#ffecec;--bg-installed:#ecffec}
-:root{--clr:#2c3e50;--accent:#3498db;--danger:#e74c3c;--ok:#27ae60;
-       --clr-removed:#e74c3c;--clr-installed:#27ae60;--bg-removed:#ffecec;--bg-installed:#ecffec}
-/* ➜  SUPPRESSION BARRE DE DÉFILEMENT  */
-html,body{width:100%;height:100%;margin:0;padding:0;overflow:hidden}
-*{box-sizing:border-box;margin:0;padding:0;font-family:Segoe UI,Roboto,Helvetica,Arial;font-size:14px}
-body{background:#f7f7f7;color:var(--clr)}
-header{background:linear-gradient(135deg,var(--clr),#1a2a3a);color:#fff;padding:1.2rem 0;text-align:center}
-header h1{font-size:1.6rem;font-weight:300}
-nav{display:flex;background:#fff;box-shadow:0 2px 4px rgba(0,0,0,.08)}
-nav button{flex:1;padding:14px;border:none;background:#fff;cursor:pointer;font-weight:600;transition:background .2s}
-nav button.active{background:var(--accent);color:#fff}
-.page{display:none;padding:20px;max-width:1200px;margin:auto}
-.page.active{display:block}
-.section{background:#fff;border-radius:8px;padding:18px;margin-bottom:20px;box-shadow:0 2px 6px rgba(0,0,0,.05)}
-.section h3{margin-bottom:12px;font-size:1.1rem}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px}
-label{font-weight:600;margin-bottom:4px;display:block}
-input,select,textarea{width:100%;padding:8px;border:1px solid #ccc;border-radius:4px}
-textarea{resize:vertical;min-height:60px}
-.photo-box{border:2px dashed #ccc;padding:12px;text-align:center;border-radius:6px;cursor:pointer;position:relative;background:#fafafa}
-.photo-box:hover{border-color:var(--accent)}
-.photo-box img{max-width:100%;max-height:120px;display:block;margin:6px auto}
-.photo-box input[type=file]{display:none}
-.btn{padding:10px 18px;border:none;border-radius:4px;font-weight:600;cursor:pointer;transition:transform .15s}
-.btn:active{transform:scale(.97)}
-.btn-primary{background:var(--accent);color:#fff}
-.btn-success{background:var(--ok);color:#fff}
-.btn-danger{background:var(--danger);color:#fff}
-.btn-secondary{background:#95a5a6;color:#fff}
-.status{padding:4px 10px;border-radius:12px;font-size:11px;font-weight:700;color:#fff}
-.status.prelim{background:#6c757d}
-.status.interv{background:#28a745}
-.alert{padding:14px;margin-bottom:18px;border-radius:6px;display:none}
-.alert.show{display:block}
-.alert.ok{background:#d4edda;color:#155724;border:1px solid #c3e6cb}
-.alert.ko{background:#f8d7da;color:#721c24;border:1px solid #f5c6cb}
-.prelim-table{width:100%;border-collapse:collapse;margin-top:10px;font-size:13px}
-.prelim-table th,.prelim-table td{padding:8px;border:1px solid #ddd;text-align:center}
-.prelim-table input{width:100%;border:none;padding:6px}
-.prelim-table th{background:#f8f9fa}
-.col-qte{width:120px}.col-ref{width:240px}.col-infos{width:600px}
-.removed-header{background:var(--bg-removed);color:var(--clr-removed)}
-.installed-header{background:var(--bg-installed);color:var(--clr-installed)}
-.schema-box{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-top:10px}
-.schema-field{background:#f8f9fa;border:1px solid #ddd;border-radius:4px;padding:8px;text-align:center}
-.schema-field label{font-size:12px;margin-bottom:4px;display:block}
-.schema-field input{width:100%;text-align:center}
-@media(max-width:700px){.grid{grid-template-columns:1fr}}</style>
-<header>
-  <h1>🌡️ Gestion Compteurs Gaz</h1>
-</header>
-<nav>
-  <button class="active" onclick="showPage('prelim')">📋 Visite Préalable</button>
-  <button onclick="showPage('interv')">🔧 VPE – Remplacement</button>
-  <button onclick="showPage('list')">📄 Liste / Export</button>
-</nav>
-<!-- 1) VISITE PRÉALABLE -->
-<div id="prelim" class="page active">
-  <form id="prelimForm" onsubmit="savePrelim(event)">
-    <div class="section">
-      <h3>Informations générales</h3>
-      <div class="grid">
-        <div>
-          <label>Date</label>
-          <input type="date" name="date" required="">
-        </div>
-        <div>
-          <label>Technicien</label>
-          <input type="text" name="tech" required="">
-        </div>
-        <div>
-          <label>N° Poste</label>
-          <input type="text" name="poste" required="">
-        </div>
-        <div>
-          <label>Nom Poste</label>
-          <input type="text" name="nom" required="">
-        </div>
-        <div class="col-full">
-          <label>Adresse</label>
-          <input type="text" name="adr" required="">
-        </div>
-      </div>
-    </div>
-    <div class="section">
-      <h3>Tableau éléments – visite préalable</h3>
-      <table class="prelim-table" id="prelimTable">
-        <thead>
-          <tr>
-            <th>Élément</th>
-            <th class="col-qte">Qté</th>
-            <th class="col-ref">Référence</th>
-            <th class="col-infos">Infos</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </div>
-    <div class="section">
-      <h3>Schémas – cotes à relever</h3>
-      <h4>Dimensions – position des boulons (vue de face)</h4>
-      <img src="cote.jpg">
-      <div class="schema-box">
-        <div class="schema-field">
-          <label>Haut (cm)</label>
-          <input type="number" name="dim_haut" value="0" step="0.1">
-        </div>
-        <div class="schema-field">
-          <label>Bas (cm)</label>
-          <input type="number" name="dim_bas" value="0" step="0.1">
-        </div>
-        <div class="schema-field">
-          <label>Gauche (cm)</label>
-          <input type="number" name="dim_gauche" value="0" step="0.1">
-        </div>
-        <div class="schema-field">
-          <label>Droite (cm)</label>
-          <input type="number" name="dim_droite" value="0" step="0.1">
-        </div>
-        <div class="schema-field">
-          <label>Centre (cm)</label>
-          <input type="number" name="dim_centre" value="0" step="0.1">
-        </div>
-      </div>
-      <img src="hauteur.jpg">
-      <h4>Hauteur compteur</h4>
-      <div class="schema-box">
-        <div class="schema-field">
-          <label>Hauteur compteur (cm)</label>
-          <input type="number" name="hauteur" value="0" step="0.1">
-        </div>
-      </div>
-    </div>
-    <div class="section">
-      <h3>Photos (4 max)</h3>
-      <div class="grid">
-        <div class="photo-box" onclick="clickPhoto(this)">
-          <span>📷 Vue générale poste</span>
-          <img style="display:none">
-          <input type="file" accept="image/*" capture="environment" onchange="previewPhoto(this)">
-        </div>
-        <div class="photo-box" onclick="clickPhoto(this)">
-          <span>📷 Environnement PDL</span>
-          <img style="display:none">
-          <input type="file" accept="image/*" capture="environment" onchange="previewPhoto(this)">
-        </div>
-        <div class="photo-box" onclick="clickPhoto(this)">
-          <span>📷 Convertisseur</span>
-          <img style="display:none">
-          <input type="file" accept="image/*" capture="environment" onchange="previewPhoto(this)">
-        </div>
-        <div class="photo-box" onclick="clickPhoto(this)">
-          <span>📷 Télérelève actuel</span>
-          <img style="display:none">
-          <input type="file" accept="image/*" capture="environment" onchange="previewPhoto(this)">
-        </div>
-      </div>
-    </div>
-    <div class="section">
-      <h3>Commentaires libres</h3>
-      <textarea name="comments" rows="4" placeholder="Remarques, anomalies, mesures complémentaires..."></textarea>
-    </div>
-    <div class="section" style="text-align:center">
-      <button class="btn btn-primary btn-icon">💾 Enregistrer visite préalable</button>
-      <button type="button" class="btn btn-secondary" onclick="resetPage('prelim')">🔄 Réinit</button>
-    </div>
-  </form>
-</div>
-<!-- 2) VPE – REMPLACEMENT -->
-<div id="interv" class="page">
-  <form id="intervForm" onsubmit="saveInterv(event)">
-    <div class="section">
-      <h3>Informations intervention</h3>
-      <div class="grid">
-        <div>
-          <label>Date intervention</label>
-          <input type="date" name="date" required="">
-        </div>
-        <div>
-          <label>Heure arrivée</label>
-          <input type="time" name="arr">
-        </div>
-        <div>
-          <label>Heure départ</label>
-          <input type="time" name="dep">
-        </div>
-        <div>
-          <label>Technicien</label>
-          <input type="text" name="tech" required="">
-        </div>
-        <div>
-          <label>N° Poste</label>
-          <input type="text" name="poste" required="">
-        </div>
-        <div>
-          <label>Nom Poste</label>
-          <input type="text" name="nom" required="">
-        </div>
-        <div class="col-full">
-          <label>Adresse</label>
-          <input type="text" name="adr" required="">
-        </div>
-        <div>
-          <label>Commune</label>
-          <input type="text" name="ville" required="">
-        </div>
-      </div>
-    </div>
-    <div class="section">
-      <h3 class="removed-header">🔴 Compteur de dépose (déposé)</h3>
-      <div class="grid">
-        <div>
-          <label>Matricule compteur</label>
-          <input type="text" name="old_mat">
-        </div>
-        <div>
-          <label>Marque</label>
-          <input type="text" name="old_marque">
-        </div>
-        <div>
-          <label>Type</label>
-          <input type="text" name="old_type">
-        </div>
-        <div>
-          <label>Année fabrication</label>
-          <input type="number" name="old_an" min="1980" max="2040">
-        </div>
-        <div>
-          <label>Index départ</label>
-          <input type="text" name="old_idx">
-        </div>
-        <div>
-          <label>Catégorie</label>
-          <select name="old_cat">
-            <option></option>
-            <option>Membranes</option>
-            <option>Piston</option>
-            <option>Turbine</option>
-          </select>
-        </div>
-        <div>
-          <label>Appellation</label>
-          <select name="old_app">
-            <option></option>
-            <option>G16</option>
-            <option>G25</option>
-            <option>G40</option>
-            <option>G65</option>
-          </select>
-        </div>
-      </div>
-      <h4 class="removed-header">Télérelève AVANT changement</h4>
-      <div class="grid">
-        <div>
-          <label>Ref ID</label>
-          <input type="text" name="tel_avant_ref">
-        </div>
-        <div>
-          <label>N° de série</label>
-          <input type="text" name="tel_avant_serial">
-        </div>
-        <div>
-          <label>Index 1 relevé</label>
-          <input type="text" name="tel_avant_idx1">
-        </div>
-        <div>
-          <label>Index 2 relevé</label>
-          <input type="text" name="tel_avant_idx2">
-        </div>
-      </div>
-      <h4 class="removed-header">Convertisseur AVANT changement</h4>
-      <div class="grid">
-        <div>
-          <label>Marque convertisseur</label>
-          <input type="text" name="conv_old_brand">
-        </div>
-        <div>
-          <label>Index mesuré</label>
-          <input type="text" name="conv_old_serial">
-        </div>
-        <div>
-          <label>Index base</label>
-          <input type="text" name="conv_old_idx">
-        </div>
-      </div>
-    </div>
-    <div class="section">
-      <h3 class="installed-header">🟢 Compteur de pose (posé)</h3>
-      <div class="grid">
-        <div>
-          <label>Matricule compteur</label>
-          <input type="text" name="new_mat">
-        </div>
-        <div>
-          <label>Marque</label>
-          <input type="text" name="new_marque">
-        </div>
-        <div>
-          <label>Type</label>
-          <input type="text" name="new_type">
-        </div>
-        <div>
-          <label>Année fabrication</label>
-          <input type="number" name="new_an" min="1980" max="2040">
-        </div>
-        <div>
-          <label>Index arrivée</label>
-          <input type="text" name="new_idx">
-        </div>
-        <div>
-          <label>Catégorie</label>
-          <select name="new_cat">
-            <option></option>
-            <option>Membranes</option>
-            <option>Piston</option>
-            <option>Turbine</option>
-          </select>
-        </div>
-        <div>
-          <label>Appellation</label>
-          <select name="new_app">
-            <option></option>
-            <option>G16</option>
-            <option>G25</option>
-            <option>G40</option>
-            <option>G65</option>
-          </select>
-        </div>
-      </div>
-      <h4 class="installed-header">Télérelève APRÈS changement</h4>
-      <div class="grid">
-        <div>
-          <label>Ref ID</label>
-          <input type="text" name="tel_apres_ref">
-        </div>
-        <div>
-          <label>N° de série</label>
-          <input type="text" name="tel_apres_serial">
-        </div>
-        <div>
-          <label>Index 1 modifié</label>
-          <input type="text" name="tel_apres_idx1mod">
-        </div>
-        <div>
-          <label>Index 2 modifié</label>
-          <input type="text" name="tel_apres_idx2mod">
-        </div>
-      </div>
-      <h4 class="installed-header">Convertisseur APRÈS changement</h4>
-      <div class="grid">
-        <div>
-          <label>Marque convertisseur</label>
-          <input type="text" name="conv_new_brand">
-        </div>
-        <div>
-          <label>Index mesuré</label>
-          <input type="text" name="conv_new_serial">
-        </div>
-        <div>
-          <label>Index base</label>
-          <input type="text" name="conv_new_idx">
-        </div>
-      </div>
-    </div>
-    <div class="section">
-      <h3>Photos (8 max)</h3>
-      <div class="grid">
-        <div class="photo-box" onclick="clickPhoto(this)">
-          <span>📷 Vue générale poste</span>
-          <img style="display:none">
-          <input type="file" accept="image/*" capture="environment" onchange="previewPhoto(this)">
-        </div>
-        <div class="photo-box" onclick="clickPhoto(this)">
-          <span>📷 Compteur déposé</span>
-          <img style="display:none">
-          <input type="file" accept="image/*" capture="environment" onchange="previewPhoto(this)">
-        </div>
-        <div class="photo-box" onclick="clickPhoto(this)">
-          <span>📷 Compteur posé</span>
-          <img style="display:none">
-          <input type="file" accept="image/*" capture="environment" onchange="previewPhoto(this)">
-        </div>
-        <div class="photo-box" onclick="clickPhoto(this)">
-          <span>📷 Étiquette DLV compteur posé</span>
-          <img style="display:none">
-          <input type="file" accept="image/*" capture="environment" onchange="previewPhoto(this)">
-        </div>
-        <div class="photo-box" onclick="clickPhoto(this)">
-          <span>📷 Environnement PDL</span>
-          <img style="display:none">
-          <input type="file" accept="image/*" capture="environment" onchange="previewPhoto(this)">
-        </div>
-        <div class="photo-box" onclick="clickPhoto(this)">
-          <span>📷 Convertisseur</span>
-          <img style="display:none">
-          <input type="file" accept="image/*" capture="environment" onchange="previewPhoto(this)">
-        </div>
-        <div class="photo-box" onclick="clickPhoto(this)">
-          <span>📷 Télérelève AVANT</span>
-          <img style="display:none">
-          <input type="file" accept="image/*" capture="environment" onchange="previewPhoto(this)">
-        </div>
-        <div class="photo-box" onclick="clickPhoto(this)">
-          <span>📷 Télérelève APRÈS</span>
-          <img style="display:none">
-          <input type="file" accept="image/*" capture="environment" onchange="previewPhoto(this)">
-        </div>
-      </div>
-    </div>
-    <div class="section" style="text-align:center">
-      <button class="btn btn-success btn-icon">💾 Enregistrer intervention</button>
-      <button type="button" class="btn btn-secondary" onclick="resetPage('interv')">🔄 Réinit</button>
-    </div>
-  </form>
-</div>
-<!-- 3) LISTE / EXPORT -->
-<div id="list" class="page">
-  <div class="section">
-    <h3>Liste des visites &amp; interventions</h3>
-    <div style="display:flex;gap:10px;margin-bottom:15px">
-      <button class="btn btn-primary" onclick="exportCSVFrench()">📊 Exporter CSV</button>
-      <button class="btn btn-secondary" onclick="importFileCSV()">📥 Importer CSV</button>
-      <input id="importFile" type="file" accept=".csv" style="display:none" onchange="readImportCSV(this)">
-    </div>
-<!-- Bouton Google Drive -->
-<div style="margin-top:10px">
-  <button class="btn btn-success btn-icon" onclick="sendToGoogleDrive()">📤 Envoyer vers Google Drive</button>
-</div>
-    <div id="tableWrap" style="overflow:auto;max-height:60vh">
-      <table id="listTable">
-        <thead></thead>
-        <tbody></tbody>
-      </table>
-    </div>
-  </div>
-</div>
-<!-- ALERT -->
-<div id="alert" class="alert"></div>
-<script>/************  UTILS  ************/
-const DB_KEY='gasMeterDB';
-let db=JSON.parse(localStorage.getItem(DB_KEY)||'{"prelim":[],"interv":[]}');
-function showAlert(msg,ok=true){
-  const a=document.getElementById('alert');
-  a.textContent=msg;a.className='alert '+(ok?'ok':'ko')+' show';
-  setTimeout(()=>a.classList.remove('show'),3000);
-}
-function showPage(p){
-  document.querySelectorAll('.page,nav button').forEach(x=>x.classList.remove('active'));
-  document.getElementById(p).classList.add('active'); event.target.classList.add('active');
-  if(p==='list') renderTable();
-}
-/************  PHOTOS  ************/
-function clickPhoto(box){ box.querySelector('input[type=file]').click(); }
-function previewPhoto(inp){
-  const box=inp.closest('.photo-box'),img=box.querySelector('img');
-  if(inp.files && inp.files[0]){
-    const r=new FileReader();
-    r.onload=function(e){img.src=e.target.result;img.style.display='block';};
-    r.readAsDataURL(inp.files[0]);
-  }
-}
-/************  PRELIM : TABLEAU 4 COLONNES  ************/
-const elements = [
-  "Photo","Sortie influence","Plaque VS","Plaque poste","Cello",
-  "Joint compteur","Joint torique","Joint plat","Joint tamis","Filtre",
-  "Staubli","Mamelon","TE laiton","Compteur","Anti-rouille","Peinture",
-  "Entrée diam","Sortie diam","Boulons"
-];
-function buildPrelimTable(){
-  const tb=document.querySelector('#prelimTable tbody');
-  tb.innerHTML='';
-  elements.forEach(el=>{
-    const tr=document.createElement('tr');
-    tr.innerHTML=`
-      <td>${el}</td>
-      <td class="col-qte"><input type="number" min="0" placeholder="Qté"></td>
-      <td class="col-ref"><input type="text" placeholder="Référence"></td>
-      <td class="col-infos"><input type="text" placeholder="Infos"></td>
-    `;
-    tb.appendChild(tr);
-  });
-}
-/************  PRELIM  ************/
-function savePrelim(e){
-  e.preventDefault();
-  const f=e.target, p=new FormData(f), o={type:'prelim',id:Date.now()};
-  o.date=p.get('date'); o.tech=p.get('tech'); o.poste=p.get('poste');
-  o.nom=p.get('nom'); o.adr=p.get('adr');
-  o.rows=[...f.querySelectorAll('#prelimTable tbody tr')].map(tr=>{
-    const [el,qty,ref,infos]=tr.querySelectorAll('td');
-    return {element:el.textContent, qte:qty.querySelector('input').value, ref:ref.querySelector('input').value, infos:infos.querySelector('input').value};
-  });
-  o.schemas={
-    dim_haut:p.get('dim_haut'), dim_bas:p.get('dim_bas'), dim_gauche:p.get('dim_gauche'),
-    dim_droite:p.get('dim_droite'), dim_centre:p.get('dim_centre'), hauteur:p.get('hauteur')
-  };
-  o.pics=[...f.querySelectorAll('#prelim .photo-box img')].map(im=>im.src||'').filter(Boolean);
-  o.comments=p.get('comments');
-  db.prelim.unshift(o); save(); f.reset();
-  showAlert('Visite préalable enregistrée');
-}
-/************  INTERV  ************/
-function saveInterv(e){
-  e.preventDefault();
-  const f=e.target, p=new FormData(f), o={type:'interv',id:Date.now()};
-  const fields=[
-    'date','arr','dep','tech','poste','nom','adr','ville',
-    'old_mat','old_marque','old_type','old_an','old_idx','old_cat','old_app',
-    'new_mat','new_marque','new_type','new_an','new_idx','new_cat','new_app',
-    'conv_old_brand','conv_old_serial','conv_old_idx',
-    'conv_new_brand','conv_new_serial','conv_new_idx',
-    'tel_avant_ref','tel_avant_serial','tel_avant_idx1','tel_avant_idx2',
-    'tel_apres_ref','tel_apres_serial','tel_apres_idx1','tel_apres_idx2'
-  ];
-  fields.forEach(k=>o[k]=p.get(k));
-  o.pics=[...f.querySelectorAll('#interv .photo-box img')].map(im=>im.src||'').filter(Boolean);
-  db.interv.unshift(o); save(); f.reset();
-  document.querySelectorAll('#interv img').forEach(i=>i.style.display='none');
-  showAlert('Intervention enregistrée');
-}
-/************  RESET  ************/
-function resetPage(pg){ document.getElementById(pg+'Form').reset(); document.querySelectorAll('#'+pg+' img').forEach(i=>i.style.display='none'); }
-/************  STORAGE  ************/
-function save(){localStorage.setItem(DB_KEY,JSON.stringify(db));}
-/************  LIST / EXPORT  ************/
-function renderTable(){
-  const h=['Date','Type','Poste','Nom','Ancien','Nouveau','Photos','Action'];
-  document.querySelector('#listTable thead').innerHTML='<tr>'+h.map(x=>`<th>${x}</th>`).join('')+'</tr>';
-  const rows=[...db.prelim,...db.interv].sort((a,b)=>new Date(b.date)-new Date(a.date));
-  document.querySelector('#listTable tbody').innerHTML=rows.map(r=>{
-    const tp=r.type==='prelim'?'<span class="status prelim">Préalable</span>':'<span class="status interv">Interv</span>';
-    return `<tr>
-      <td>${r.date}</td><td>${tp}</td><td>${r.poste}</td><td>${r.nom||''}</td>
-      <td>${r.old_mat||''}</td><td>${r.new_mat||''}</td>
-      <td>${r.pics.length}</td>
-      <td><button class="btn btn-danger btn-sm" onclick="delRow('${r.type}',${r.id})">🗑</button></td>
-    </tr>`;
-  }).join('');
-}
-function delRow(tp,id){ db[tp]=db[tp].filter(x=>x.id!==id); save(); renderTable(); showAlert('Supprimé'); }
-/* ----------  EXPORT CSV AVEC INTITULÉS FRANÇAIS  ---------- */
-const FRENCH_HEADERS = {
-  prelim: {
-    "Date d'intervention": "date",
-    "Type de visite": "type",
-    "N° Poste": "poste",
-    "Nom du Poste": "nom",
-    "Adresse": "adr",
-    "Commune": "ville",
-    "Éléments / Qte / Réf / Infos": "rows",
-    "Schémas cotes": "schemas",
-    "Photos": "pics",
-    "Commentaires": "comments"
-  },
-  interv: {
-    "Date d'intervention": "date",
-    "Heure arrivée": "arr",
-    "Heure départ": "dep",
-    "Technicien": "tech",
-    "N° Poste": "poste",
-    "Nom du Poste": "nom",
-    "Adresse": "adr",
-    "Commune": "ville",
-    "Matricule compteur déposé": "old_mat",
-    "Marque déposé": "old_marque",
-    "Type déposé": "old_type",
-    "Année fabrication déposé": "old_an",
-    "Index départ": "old_idx",
-    "Catégorie déposé": "old_cat",
-    "Appellation déposé": "old_app",
-    "Matricule compteur posé": "new_mat",
-    "Marque posé": "new_marque",
-    "Type posé": "new_type",
-    "Année fabrication posé": "new_an",
-    "Index arrivée": "new_idx",
-    "Catégorie posé": "new_cat",
-    "Appellation posé": "new_app",
-    "Convertisseur AVANT – Marque": "conv_old_brand",
-    "Convertisseur AVANT – N° série": "conv_old_serial",
-    "Convertisseur AVANT – Index": "conv_old_idx",
-    "Convertisseur APRÈS – Marque": "conv_new_brand",
-    "Convertisseur APRÈS – N° série": "conv_new_serial",
-    "Convertisseur APRÈS – Index": "conv_new_idx",
-    "Télérelève AVANT – Ref ID": "tel_avant_ref",
-    "Télérelève AVANT – N° série": "tel_avant_serial",
-    "Télérelève AVANT – Index 1": "tel_avant_idx1",
-    "Télérelève AVANT – Index 2": "tel_avant_idx2",
-    "Télérelève APRÈS – Ref ID": "tel_apres_ref",
-    "Télérelève APRÈS – N° série": "tel_apres_serial",
-    "Télérelève APRÈS – Index 1": "tel_apres_idx1",
-    "Télérelève APRÈS – Index 2": "tel_apres_idx2",
-    "Photos": "pics",
-    "Commentaires": "comments"
-  }
-};
-function exportCSVFrench(){
-  const all=[...db.prelim,...db.interv].sort((a,b)=>new Date(b.date)-new Date(a.date));
-  if(!all.length){showAlert('Rien à exporter',false);return;}
-  const csvRows=[];
-  all.forEach(rec=>{
-    const headers=FRENCH_HEADERS[rec.type];
-    const line=[];
-    Object.keys(headers).forEach(lib=>{
-      const key=headers[lib];
-      let val=rec[key]||'';
-      if(typeof val==='object') val=JSON.stringify(val);
-      line.push(/;|\n/.test(val)?'"'+val.replace(/"/g,'""')+'"':val);
-    });
-    csvRows.push(line.join(';'));
-  });
-  const csv=[Object.keys(FRENCH_HEADERS[all[0].type]).join(';'),...csvRows].join('\r\n');
-  const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');
-  a.href=url;
-  a.download=`compteurs_${new Date().toISOString().slice(0,10)}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
-  showAlert('CSV exporté (libellés français)');
-}
-function importFileCSV(){document.getElementById('importFile').click()}
-function readImportCSV(inp){
-  if(!inp.files||!inp.files[0])return;
-  const r=new FileReader();
-  r.onload=function(e){
-    try{
-      const lines=e.target.result.split(/\r?\n/), h=lines[0].split(';').map(x=>x.replace(/^"|"$/g,''));
-      const imp=[];
-      for(let i=1;i<lines.length;i++){
-        if(!lines[i].trim())continue;
-        const vals=lines[i].split(';').map(x=>x.replace(/^"|"$/g,''));
-        const o={}; h.forEach((k,j)=>o[k]=vals[j]||''); imp.push(o);
-      }
-      if(!imp.length){showAlert('CSV vide',false);return;}
-      if(confirm(`Ajouter ${imp.length} lignes ?`)){
-        imp.forEach(r=>{
-          r.id=Number(r.id)||Date.now()+Math.random();
-          r.pics=r.pics?r.pics.split(','):[];
-          if(r.rows) r.rows=JSON.parse(r.rows);
-          if(r.schemas) r.schemas=JSON.parse(r.schemas);
-          if(r.type==='prelim')db.prelim.unshift(r);else db.interv.unshift(r);
+<body class="bg-gray-50">
+    <div id="app"></div>
+
+    <script>
+        window.addEventListener('DOMContentLoaded', function() {
+            const { useState, useEffect, createElement: h } = React;
+            const { createRoot } = ReactDOM;
+
+            // Icônes SVG simples
+            const HomeIcon = () => h('svg', { width: 20, height: 20, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 },
+                h('path', { d: 'M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z' }),
+                h('polyline', { points: '9 22 9 12 15 12 15 22' })
+            );
+
+            const PlusIcon = () => h('svg', { width: 40, height: 40, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 },
+                h('line', { x1: 12, y1: 5, x2: 12, y2: 19 }),
+                h('line', { x1: 5, y1: 12, x2: 19, y2: 12 })
+            );
+
+            const DownloadIcon = () => h('svg', { width: 20, height: 20, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 },
+                h('path', { d: 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4' }),
+                h('polyline', { points: '7 10 12 15 17 10' }),
+                h('line', { x1: 12, y1: 15, x2: 12, y2: 3 })
+            );
+
+            const UploadIcon = () => h('svg', { width: 20, height: 20, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 },
+                h('path', { d: 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4' }),
+                h('polyline', { points: '17 8 12 3 7 8' }),
+                h('line', { x1: 12, y1: 3, x2: 12, y2: 15 })
+            );
+
+            const SearchIcon = () => h('svg', { width: 20, height: 20, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 },
+                h('circle', { cx: 11, cy: 11, r: 8 }),
+                h('path', { d: 'm21 21-4.35-4.35' })
+            );
+
+            const SaveIcon = () => h('svg', { width: 20, height: 20, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 },
+                h('path', { d: 'M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z' }),
+                h('polyline', { points: '17 21 17 13 7 13 7 21' }),
+                h('polyline', { points: '7 3 7 8 15 8' })
+            );
+
+            function App() {
+                const [interventions, setInterventions] = useState([]);
+                const [currentView, setCurrentView] = useState('home');
+                const [interventionType, setInterventionType] = useState('');
+                const [searchTerm, setSearchTerm] = useState('');
+                const [formData, setFormData] = useState({
+                    visitBy: '',
+                    interventionDate: '',
+                    postNumber: '',
+                    postName: '',
+                    address: '',
+                    commune: '',
+                    arrivalTime: '',
+                    departureTime: '',
+                    removeMeterId: '',
+                    removeMeterBrand: '',
+                    removeMeterType: '',
+                    removeMeterYear: '',
+                    removeMeterLastCalib: '',
+                    removeImpulsion: '',
+                    removeCategory: 'Membranes',
+                    removeAppellation: 'G16',
+                    removeWheelsBefore: '',
+                    removeWheelsAfter: '',
+                    removeIndex: '',
+                    removeFreeLabel: '',
+                    installMeterId: '',
+                    installMeterBrand: '',
+                    installMeterType: '',
+                    installMeterYear: '',
+                    installMeterLastCalib: '',
+                    installImpulsion: '',
+                    installCategory: 'Membranes',
+                    installAppellation: 'G16',
+                    installWheelsBefore: '',
+                    installWheelsAfter: '',
+                    installIndex: '',
+                    installFreeLabel: '',
+                    telerelevantBeforeRef: '40000',
+                    telerelevantBeforeSerial: '32',
+                    telerelevantBeforeIndex1: '',
+                    telerelevantBeforeIndex2: '',
+                    telerelevantAfterSerial: '',
+                    telerelevantAfterIndex1: '',
+                    telerelevantAfterIndex2: '',
+                    converterBeforeBrand: '',
+                    converterBeforeIndex: '',
+                    converterBeforeBase: '',
+                    converterAfterSerial: '',
+                    converterAfterIndex: '',
+                    converterAfterBase: '',
+                    photoVueGenerale: '',
+                    photoCompteurDepose: '',
+                    photoCompteurPose: '',
+                    photoEtiquetteDLV: '',
+                    photoEnvironnementPDL: '',
+                    photoConvertisseur: '',
+                    photoTelereleveAvant: '',
+                    photoTelereleveApres: '',
+                    maintenance: '',
+                    photo: '',
+                    sortieInfluance: '',
+                    plaqueVS: '',
+                    plaquePoste: '',
+                    cello: '',
+                    jointCompteur: '',
+                    jointTorique: '',
+                    jointPlat: '',
+                    jointTamis: '',
+                    flitre: '',
+                    staubli: '',
+                    mamelonMale: '',
+                    teLaiton: '',
+                    compteur: '',
+                    antiRouille: '',
+                    peinture: '',
+                    couleurRAL: '',
+                    boulonsEntree: '',
+                    boulonsDiamEntree: '',
+                    boulonsDiamSortie: '',
+                    boulonsLongEntree: '',
+                    boulonsLongSortie: '',
+                    boulonsSortieQte: '',
+                    dimensionHaut: '',
+                    dimensionBas: '',
+                    dimensionGauche: '',
+                    dimensionDroite: '',
+                    dimensionCentre: '',
+                    hauteurCompteur: '',
+                    commentaires: ''
+                });
+
+                useEffect(() => {
+                    loadData();
+                }, []);
+
+                const loadData = () => {
+                    try {
+                        const saved = localStorage.getItem('gasInterventions');
+                        if (saved) {
+                            setInterventions(JSON.parse(saved));
+                        }
+                    } catch (e) {
+                        console.error('Erreur chargement:', e);
+                    }
+                };
+
+                const handleInputChange = (e) => {
+                    const { name, value } = e.target;
+                    setFormData(prev => ({ ...prev, [name]: value }));
+                };
+
+                const handlePhotoCapture = (e, fieldName) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (event) => {
+                            setFormData(prev => ({ ...prev, [fieldName]: event.target.result }));
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                };
+
+                const handleSubmit = (e) => {
+                    e.preventDefault();
+                    const newIntervention = {
+                        id: Date.now(),
+                        type: interventionType,
+                        ...formData,
+                        createdAt: new Date().toISOString()
+                    };
+                    const updated = [...interventions, newIntervention];
+                    setInterventions(updated);
+                    localStorage.setItem('gasInterventions', JSON.stringify(updated));
+                    alert('Intervention enregistrée avec succès !');
+                    resetForm();
+                    setCurrentView('list');
+                };
+
+                const resetForm = () => {
+                    setFormData({
+                        visitBy: '',
+                        interventionDate: '',
+                        postNumber: '',
+                        postName: '',
+                        address: '',
+                        commune: '',
+                        arrivalTime: '',
+                        departureTime: '',
+                        removeMeterId: '',
+                        removeMeterBrand: '',
+                        removeMeterType: '',
+                        removeMeterYear: '',
+                        removeMeterLastCalib: '',
+                        removeImpulsion: '',
+                        removeCategory: 'Membranes',
+                        removeAppellation: 'G16',
+                        removeWheelsBefore: '',
+                        removeWheelsAfter: '',
+                        removeIndex: '',
+                        removeFreeLabel: '',
+                        installMeterId: '',
+                        installMeterBrand: '',
+                        installMeterType: '',
+                        installMeterYear: '',
+                        installMeterLastCalib: '',
+                        installImpulsion: '',
+                        installCategory: 'Membranes',
+                        installAppellation: 'G16',
+                        installWheelsBefore: '',
+                        installWheelsAfter: '',
+                        installIndex: '',
+                        installFreeLabel: '',
+                        telerelevantBeforeRef: '40000',
+                        telerelevantBeforeSerial: '32',
+                        telerelevantBeforeIndex1: '',
+                        telerelevantBeforeIndex2: '',
+                        telerelevantAfterSerial: '',
+                        telerelevantAfterIndex1: '',
+                        telerelevantAfterIndex2: '',
+                        converterBeforeBrand: '',
+                        converterBeforeIndex: '',
+                        converterBeforeBase: '',
+                        converterAfterSerial: '',
+                        converterAfterIndex: '',
+                        converterAfterBase: '',
+                        photoVueGenerale: '',
+                        photoCompteurDepose: '',
+                        photoCompteurPose: '',
+                        photoEtiquetteDLV: '',
+                        photoEnvironnementPDL: '',
+                        photoConvertisseur: '',
+                        photoTelereleveAvant: '',
+                        photoTelereleveApres: '',
+                        maintenance: '',
+                        photo: '',
+                        sortieInfluance: '',
+                        plaqueVS: '',
+                        plaquePoste: '',
+                        cello: '',
+                        jointCompteur: '',
+                        jointTorique: '',
+                        jointPlat: '',
+                        jointTamis: '',
+                        flitre: '',
+                        staubli: '',
+                        mamelonMale: '',
+                        teLaiton: '',
+                        compteur: '',
+                        antiRouille: '',
+                        peinture: '',
+                        couleurRAL: '',
+                        boulonsEntree: '',
+                        boulonsDiamEntree: '',
+                        boulonsDiamSortie: '',
+                        boulonsLongEntree: '',
+                        boulonsLongSortie: '',
+                        boulonsSortieQte: '',
+                        dimensionHaut: '',
+                        dimensionBas: '',
+                        dimensionGauche: '',
+                        dimensionDroite: '',
+                        dimensionCentre: '',
+                        hauteurCompteur: '',
+                        commentaires: ''
+                    });
+                };
+
+                const exportToCSV = () => {
+                    if (interventions.length === 0) {
+                        alert('Aucune donnée à exporter');
+                        return;
+                    }
+
+                    const headers = Object.keys(interventions[0]).join(',');
+                    const rows = interventions.map(int => 
+                        Object.values(int).map(val => `"${val}"`).join(',')
+                    ).join('\n');
+                    
+                    const csv = headers + '\n' + rows;
+                    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(blob);
+                    link.download = `interventions_gaz_${new Date().toISOString().split('T')[0]}.csv`;
+                    link.click();
+                };
+
+                const importFromCSV = (e) => {
+                    const file = e.target.files[0];
+                    if (!file) return;
+
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        try {
+                            const text = event.target.result;
+                            const lines = text.split('\n');
+                            const headers = lines[0].split(',');
+                            
+                            const imported = lines.slice(1).filter(line => line.trim()).map(line => {
+                                const values = line.match(/(".*?"|[^,]+)(?=\s*,|\s*$)/g).map(v => v.replace(/^"|"$/g, ''));
+                                const obj = {};
+                                headers.forEach((header, i) => {
+                                    obj[header.trim()] = values[i] || '';
+                                });
+                                return obj;
+                            });
+
+                            setInterventions(imported);
+                            localStorage.setItem('gasInterventions', JSON.stringify(imported));
+                            alert(`${imported.length} interventions importées avec succès !`);
+                        } catch (error) {
+                            alert('Erreur lors de l\'importation du fichier CSV');
+                        }
+                    };
+                    reader.readAsText(file);
+                };
+
+                const deleteIntervention = (id) => {
+                    if (confirm('Êtes-vous sûr de vouloir supprimer cette intervention ?')) {
+                        const updated = interventions.filter(int => int.id !== id);
+                        setInterventions(updated);
+                        localStorage.setItem('gasInterventions', JSON.stringify(updated));
+                    }
+                };
+
+                const filteredInterventions = interventions.filter(int =>
+                    int.postNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    int.postName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    int.commune?.toLowerCase().includes(searchTerm.toLowerCase())
+                );
+
+                const startNewIntervention = (type) => {
+                    setInterventionType(type);
+                    setCurrentView('form');
+                };
+
+                // Header component
+                const Header = () => h('div', null,
+                    h('div', { className: 'bg-teal-700 text-white p-6 shadow-lg' },
+                        h('h1', { className: 'text-3xl font-bold text-center' }, 'VPE COMPTEUR GAZ'),
+                        h('p', { className: 'text-center mt-2 text-teal-100' }, 'Gestion des interventions sur compteurs')
+                    ),
+                    h('div', { className: 'bg-white shadow-md p-4' },
+                        h('div', { className: 'max-w-7xl mx-auto flex flex-wrap gap-4 justify-between items-center' },
+                            h('div', { className: 'flex gap-2' },
+                                h('button', {
+                                    onClick: () => setCurrentView('home'),
+                                    className: `px-4 py-2 rounded flex items-center gap-2 ${currentView === 'home' ? 'bg-teal-600 text-white' : 'bg-gray-200'}`
+                                }, h(HomeIcon), ' Accueil'),
+                                h('button', {
+                                    onClick: () => setCurrentView('list'),
+                                    className: `px-4 py-2 rounded ${currentView === 'list' ? 'bg-teal-600 text-white' : 'bg-gray-200'}`
+                                }, 'Liste des interventions')
+                            ),
+                            h('div', { className: 'flex gap-2' },
+                                h('button', {
+                                    onClick: exportToCSV,
+                                    className: 'px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 flex items-center gap-2'
+                                }, h(DownloadIcon), ' Exporter CSV'),
+                                h('label', { className: 'px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 cursor-pointer flex items-center gap-2' },
+                                    h(UploadIcon), ' Importer CSV',
+                                    h('input', {
+                                        type: 'file',
+                                        accept: '.csv',
+                                        onChange: importFromCSV,
+                                        className: 'hidden'
+                                    })
+                                )
+                            )
+                        )
+                    )
+                );
+
+                // RENDER HOME
+                if (currentView === 'home') {
+                    return h('div', { className: 'min-h-screen bg-gray-50' },
+                        h(Header),
+                        h('div', { className: 'max-w-7xl mx-auto p-6' },
+                            h('div', { className: 'grid grid-cols-1 md:grid-cols-2 gap-6' },
+                                h('div', {
+                                    onClick: () => startNewIntervention('VPE'),
+                                    className: 'bg-white p-8 rounded-lg shadow-lg hover:shadow-xl transition-shadow cursor-pointer border-2 border-teal-200 hover:border-teal-500'
+                                },
+                                    h('div', { className: 'text-center' },
+                                        h('div', { className: 'bg-teal-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4' },
+                                            h(PlusIcon)
+                                        ),
+                                        h('h2', { className: 'text-2xl font-bold text-teal-700 mb-2' }, 'Intervention VPE'),
+                                        h('p', { className: 'text-gray-600' }, 'Changement de compteur et maintenance complète')
+                                    )
+                                ),
+                                h('div', {
+                                    onClick: () => startNewIntervention('Visite Préalable'),
+                                    className: 'bg-white p-8 rounded-lg shadow-lg hover:shadow-xl transition-shadow cursor-pointer border-2 border-purple-200 hover:border-purple-500'
+                                },
+                                    h('div', { className: 'text-center' },
+                                        h('div', { className: 'bg-purple-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4' },
+                                            h(PlusIcon)
+                                        ),
+                                        h('h2', { className: 'text-2xl font-bold text-purple-700 mb-2' }, 'Visite Préalable'),
+                                        h('p', { className: 'text-gray-600' }, 'Inspection et relevé des informations du poste')
+                                    )
+                                )
+                            )
+                        )
+                    );
+                }
+
+                // RENDER LIST
+                if (currentView === 'list') {
+                    return h('div', { className: 'min-h-screen bg-gray-50' },
+                        h(Header),
+                        h('div', { className: 'max-w-7xl mx-auto p-6' },
+                            h('div', { className: 'mb-6 flex items-center gap-4' },
+                                h('div', { className: 'flex-1 relative' },
+                                    h('div', { className: 'absolute left-3 top-3' }, h(SearchIcon)),
+                                    h('input', {
+                                        type: 'text',
+                                        placeholder: 'Rechercher par N° poste, nom ou commune...',
+                                        value: searchTerm,
+                                        onChange: (e) => setSearchTerm(e.target.value),
+                                        className: 'w-full pl-10 pr-4 py-2 border rounded-lg'
+                                    })
+                                ),
+                                h('div', { className: 'text-gray-600' }, `${filteredInterventions.length} intervention(s)`)
+                            ),
+                            h('div', { className: 'bg-white rounded-lg shadow overflow-hidden' },
+                                h('div', { className: 'overflow-x-auto' },
+                                    h('table', { className: 'w-full' },
+                                        h('thead', { className: 'bg-gray-100' },
+                                            h('tr', null,
+                                                h('th', { className: 'px-4 py-3 text-left' }, 'Type'),
+                                                h('th', { className: 'px-4 py-3 text-left' }, 'Date'),
+                                                h('th', { className: 'px-4 py-3 text-left' }, 'N° Poste'),
+                                                h('th', { className: 'px-4 py-3 text-left' }, 'Nom Poste'),
+                                                h('th', { className: 'px-4 py-3 text-left' }, 'Commune'),
+                                                h('th', { className: 'px-4 py-3 text-left' }, 'Actions')
+                                            )
+                                        ),
+                                        h('tbody', null,
+                                            filteredInterventions.map((int, idx) =>
+                                                h('tr', {
+                                                    key: int.id,
+                                                    className: idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                                                },
+                                                    h('td', { className: 'px-4 py-3' },
+                                                        h('span', {
+                                                            className: `px-2 py-1 rounded text-xs font-semibold ${
+                                                                int.type === 'VPE' ? 'bg-teal-100 text-teal-700' : 'bg-purple-100 text-purple-700'
+                                                            }`
+                                                        }, int.type)
+                                                    ),
+                                                    h('td', { className: 'px-4 py-3' }, int.interventionDate),
+                                                    h('td', { className: 'px-4 py-3' }, int.postNumber),
+                                                    h('td', { className: 'px-4 py-3' }, int.postName),
+                                                    h('td', { className: 'px-4 py-3' }, int.commune),
+                                                    h('td', { className: 'px-4 py-3' },
+                                                        h('button', {
+                                                            onClick: () => deleteIntervention(int.id),
+                                                            className: 'text-red-600 hover:text-red-800'
+                                                        }, 'Supprimer')
+                                                    )
+                                                )
+                                            )
+                                        )
+                                    )
+                                )
+                            )
+                        )
+                    );
+                }
+
+                // Helper pour créer des champs de photo avec capture
+                const createPhotoInput = (label, name) => {
+                    return h('div', { className: 'border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-teal-500 transition-colors' },
+                        formData[name] ? 
+                            h('div', { className: 'relative' },
+                                h('img', { 
+                                    src: formData[name], 
+                                    alt: label,
+                                    className: 'w-full h-32 object-cover rounded mb-2'
+                                }),
+                                h('button', {
+                                    type: 'button',
+                                    onClick: () => setFormData(prev => ({ ...prev, [name]: '' })),
+                                    className: 'text-xs text-red-600 hover:text-red-800'
+                                }, 'Supprimer')
+                            )
+                        :
+                            h('div', null,
+                                h('div', { className: 'text-4xl mb-2' }, '📷'),
+                                h('label', { className: 'block text-sm font-medium mb-2' }, label),
+                                h('label', { 
+                                    className: 'inline-block px-4 py-2 bg-teal-600 text-white rounded cursor-pointer hover:bg-teal-700 text-sm'
+                                },
+                                    'Prendre une photo',
+                                    h('input', {
+                                        type: 'file',
+                                        accept: 'image/*',
+                                        capture: 'environment',
+                                        onChange: (e) => handlePhotoCapture(e, name),
+                                        className: 'hidden'
+                                    })
+                                )
+                            )
+                    );
+                };
+
+                // Helper pour créer des champs input
+                const createInput = (label, name, type = 'text', required = false, options = null) => {
+                    return h('div', null,
+                        h('label', { className: 'block text-sm font-medium mb-1' }, label),
+                        options ? 
+                            h('select', {
+                                name: name,
+                                value: formData[name],
+                                onChange: handleInputChange,
+                                className: 'w-full p-2 border rounded'
+                            }, options.map(opt => h('option', { value: opt, key: opt }, opt)))
+                        :
+                            h('input', {
+                                type: type,
+                                name: name,
+                                value: formData[name],
+                                onChange: handleInputChange,
+                                className: 'w-full p-2 border rounded',
+                                required: required
+                            })
+                    );
+                };
+
+                // RENDER FORM VPE
+                if (currentView === 'form' && interventionType === 'VPE') {
+                    return h('div', { className: 'min-h-screen bg-gray-50' },
+                        h(Header),
+                        h('div', { className: 'max-w-7xl mx-auto p-6' },
+                            h('form', { onSubmit: handleSubmit, className: 'space-y-6' },
+                                // Titre
+                                h('div', { className: 'bg-teal-50 p-4 rounded-lg border-2 border-teal-300' },
+                                    h('h2', { className: 'text-2xl font-bold text-teal-800' }, 'INTERVENTION VPE')
+                                ),
+                                
+                                // Informations de visite
+                                h('div', { className: 'bg-white p-6 rounded-lg shadow' },
+                                    h('h2', { className: 'text-xl font-bold mb-4 text-teal-700' }, 'Informations de visite'),
+                                    h('div', { className: 'grid grid-cols-1 md:grid-cols-2 gap-4' },
+                                        createInput('Visite réalisée par', 'visitBy', 'text', true),
+                                        createInput('Date d\'intervention', 'interventionDate', 'date', true),
+                                        createInput('Heure d\'arrivée', 'arrivalTime', 'time'),
+                                        createInput('Heure de départ', 'departureTime', 'time')
+                                    )
+                                ),
+
+                                // Localisation
+                                h('div', { className: 'bg-white p-6 rounded-lg shadow' },
+                                    h('h2', { className: 'text-xl font-bold mb-4 text-teal-700' }, 'Localisation du poste'),
+                                    h('div', { className: 'grid grid-cols-1 md:grid-cols-2 gap-4' },
+                                        createInput('N° du Poste', 'postNumber', 'text', true),
+                                        createInput('Nom du Poste', 'postName'),
+                                        createInput('Adresse', 'address'),
+                                        createInput('Commune', 'commune')
+                                    )
+                                ),
+
+                                // Compteur déposé
+                                h('div', { className: 'bg-purple-50 p-6 rounded-lg shadow border-2 border-purple-300' },
+                                    h('h2', { className: 'text-xl font-bold mb-4 text-purple-800' }, 'COMPTEUR DE DÉPOSÉ'),
+                                    h('div', { className: 'grid grid-cols-1 md:grid-cols-3 gap-4' },
+                                        createInput('Matricule compteur', 'removeMeterId'),
+                                        createInput('Marque', 'removeMeterBrand'),
+                                        createInput('Type', 'removeMeterType'),
+                                        createInput('Année de fabrication', 'removeMeterYear'),
+                                        createInput('Année du dernier étalonnage', 'removeMeterLastCalib'),
+                                        createInput('1 impulsion = (m3)', 'removeImpulsion'),
+                                        createInput('Catégorie', 'removeCategory', 'text', false, ['Membranes', 'Piston', 'Turbine']),
+                                        createInput('Appellation', 'removeAppellation', 'text', false, ['G16', 'G25', 'G40', 'G65', 'G']),
+                                        createInput('Nombre de roues avant virgule', 'removeWheelsBefore', 'number'),
+                                        createInput('Nombre de roues après virgule', 'removeWheelsAfter', 'number'),
+                                        createInput('Index', 'removeIndex'),
+                                        h('div', { className: 'md:col-span-2' },
+                                            createInput('Rubrique libre', 'removeFreeLabel')
+                                        )
+                                    )
+                                ),
+
+                                // Compteur posé
+                                h('div', { className: 'bg-teal-50 p-6 rounded-lg shadow border-2 border-teal-300' },
+                                    h('h2', { className: 'text-xl font-bold mb-4 text-teal-800' }, 'COMPTEUR DE POSE'),
+                                    h('div', { className: 'grid grid-cols-1 md:grid-cols-3 gap-4' },
+                                        createInput('Matricule compteur', 'installMeterId'),
+                                        createInput('Marque', 'installMeterBrand'),
+                                        createInput('Type', 'installMeterType'),
+                                        createInput('Année de fabrication', 'installMeterYear'),
+                                        createInput('Année du dernier étalonnage', 'installMeterLastCalib'),
+                                        createInput('1 impulsion = (m3)', 'installImpulsion'),
+                                        createInput('Catégorie', 'installCategory', 'text', false, ['Membranes', 'Piston', 'Turbine']),
+                                        createInput('Appellation', 'installAppellation', 'text', false, ['G16', 'G25', 'G40', 'G65', 'G']),
+                                        createInput('Nombre de roues avant virgule', 'installWheelsBefore', 'number'),
+                                        createInput('Nombre de roues après virgule', 'installWheelsAfter', 'number'),
+                                        createInput('Index', 'installIndex'),
+                                        h('div', { className: 'md:col-span-2' },
+                                            createInput('Rubrique libre', 'installFreeLabel')
+                                        )
+                                    )
+                                ),
+
+                                // Télérelève
+                                h('div', { className: 'grid grid-cols-1 md:grid-cols-2 gap-6' },
+                                    h('div', { className: 'bg-white p-6 rounded-lg shadow' },
+                                        h('h2', { className: 'text-lg font-bold mb-4 text-purple-800' }, 'Télérelève AVANT chgt compteur'),
+                                        h('div', { className: 'space-y-3' },
+                                            createInput('Ref ID', 'telerelevantBeforeRef'),
+                                            createInput('N° de série', 'telerelevantBeforeSerial'),
+                                            createInput('Index 1 relevé', 'telerelevantBeforeIndex1'),
+                                            createInput('Index 2 relevé', 'telerelevantBeforeIndex2')
+                                        )
+                                    ),
+                                    h('div', { className: 'bg-white p-6 rounded-lg shadow' },
+                                        h('h2', { className: 'text-lg font-bold mb-4 text-teal-800' }, 'Télérelève APRES chgt compteur'),
+                                        h('div', { className: 'space-y-3' },
+                                            createInput('N° de série', 'telerelevantAfterSerial'),
+                                            createInput('Index 1 modifié', 'telerelevantAfterIndex1'),
+                                            createInput('Index 2 modifié', 'telerelevantAfterIndex2')
+                                        )
+                                    )
+                                ),
+
+                                // Convertisseur
+                                h('div', { className: 'grid grid-cols-1 md:grid-cols-2 gap-6' },
+                                    h('div', { className: 'bg-white p-6 rounded-lg shadow' },
+                                        h('h2', { className: 'text-lg font-bold mb-4 text-purple-800' }, 'Convertisseur AVANT chgt de compteur'),
+                                        h('div', { className: 'space-y-3' },
+                                            createInput('Marque', 'converterBeforeBrand'),
+                                            createInput('Index mesuré', 'converterBeforeIndex'),
+                                            createInput('Index base', 'converterBeforeBase')
+                                        )
+                                    ),
+                                    h('div', { className: 'bg-white p-6 rounded-lg shadow' },
+                                        h('h2', { className: 'text-lg font-bold mb-4 text-teal-800' }, 'Convertisseur APRES chgt de compteur'),
+                                        h('div', { className: 'space-y-3' },
+                                            createInput('N° de série', 'converterAfterSerial'),
+                                            createInput('Index mesuré', 'converterAfterIndex'),
+                                            createInput('Index base', 'converterAfterBase')
+                                        )
+                                    )
+                                ),
+
+                                // Photos
+                                h('div', { className: 'bg-white p-6 rounded-lg shadow' },
+                                    h('h2', { className: 'text-xl font-bold mb-4 text-teal-700' }, 'Photos (8 max)'),
+                                    h('div', { className: 'grid grid-cols-1 md:grid-cols-4 gap-4' },
+                                        createPhotoInput('Vue générale poste', 'photoVueGenerale'),
+                                        createPhotoInput('Compteur déposé', 'photoCompteurDepose'),
+                                        createPhotoInput('Compteur posé', 'photoCompteurPose'),
+                                        createPhotoInput('Étiquette DLV compteur posé', 'photoEtiquetteDLV'),
+                                        createPhotoInput('Environnement PDL', 'photoEnvironnementPDL'),
+                                        createPhotoInput('Convertisseur', 'photoConvertisseur'),
+                                        createPhotoInput('Télérelève AVANT', 'photoTelereleveAvant'),
+                                        createPhotoInput('Télérelève APRÈS', 'photoTelereleveApres')
+                                    )
+                                ),
+
+                                // Entretien
+                                h('div', { className: 'bg-white p-6 rounded-lg shadow' },
+                                    h('h2', { className: 'text-xl font-bold mb-4 text-teal-700' }, 'Entretien poste réalisé'),
+                                    h('div', null,
+                                        h('label', { className: 'block text-sm font-medium mb-1' }, 'Description'),
+                                        h('textarea', {
+                                            name: 'maintenance',
+                                            value: formData.maintenance,
+                                            onChange: handleInputChange,
+                                            rows: 4,
+                                            className: 'w-full p-2 border rounded',
+                                            placeholder: 'Détails de l\'entretien effectué...'
+                                        })
+                                    )
+                                ),
+
+                                // Boutons
+                                h('div', { className: 'flex gap-4 justify-end' },
+                                    h('button', {
+                                        type: 'button',
+                                        onClick: () => {
+                                            if (confirm('Voulez-vous annuler ? Les données non sauvegardées seront perdues.')) {
+                                                resetForm();
+                                                setCurrentView('home');
+                                            }
+                                        },
+                                        className: 'px-6 py-3 bg-gray-400 text-white rounded-lg hover:bg-gray-500'
+                                    }, 'Annuler'),
+                                    h('button', {
+                                        type: 'submit',
+                                        className: 'px-6 py-3 bg-teal-600 text-white rounded-lg hover:bg-teal-700 flex items-center gap-2'
+                                    }, h(SaveIcon), ' Enregistrer l\'intervention')
+                                )
+                            )
+                        )
+                    );
+                }
+
+                // RENDER FORM VISITE PREALABLE
+                if (currentView === 'form' && interventionType === 'Visite Préalable') {
+                    return h('div', { className: 'min-h-screen bg-gray-50' },
+                        h(Header),
+                        h('div', { className: 'max-w-7xl mx-auto p-6' },
+                            h('form', { onSubmit: handleSubmit, className: 'space-y-6' },
+                                // Titre
+                                h('div', { className: 'bg-purple-50 p-4 rounded-lg border-2 border-purple-300' },
+                                    h('h2', { className: 'text-2xl font-bold text-purple-800' }, 'VISITE PRÉALABLE VPE COMPTEUR GAZ')
+                                ),
+
+                                // Informations de visite
+                                h('div', { className: 'bg-white p-6 rounded-lg shadow' },
+                                    h('h2', { className: 'text-xl font-bold mb-4 text-purple-700' }, 'Informations de visite'),
+                                    h('div', { className: 'grid grid-cols-1 md:grid-cols-2 gap-4' },
+                                        createInput('Visite réalisée par', 'visitBy', 'text', true),
+                                        createInput('Date', 'interventionDate', 'date', true)
+                                    )
+                                ),
+
+                                // Localisation
+                                h('div', { className: 'bg-white p-6 rounded-lg shadow' },
+                                    h('h2', { className: 'text-xl font-bold mb-4 text-purple-700' }, 'Localisation'),
+                                    h('div', { className: 'grid grid-cols-1 md:grid-cols-2 gap-4' },
+                                        createInput('N° du Poste', 'postNumber', 'text', true),
+                                        createInput('Nom du poste', 'postName'),
+                                        createInput('Adresse', 'address'),
+                                        createInput('Commune', 'commune')
+                                    )
+                                ),
+
+                                // Informations du poste
+                                h('div', { className: 'bg-white p-6 rounded-lg shadow' },
+                                    h('h2', { className: 'text-xl font-bold mb-4 text-purple-700' }, 'Informations du poste'),
+                                    h('div', { className: 'grid grid-cols-1 md:grid-cols-3 gap-4' },
+                                        createInput('PHOTO', 'photo'),
+                                        createInput('SORTIE INFLUANCE', 'sortieInfluance'),
+                                        createInput('PLAQUE VS', 'plaqueVS'),
+                                        createInput('PLAQUE POSTE', 'plaquePoste'),
+                                        createInput('CELLO', 'cello'),
+                                        createInput('JOINT COMPTEUR (SG 00425 DN50)', 'jointCompteur'),
+                                        createInput('JOINT TORIQUE (SG00768)', 'jointTorique'),
+                                        createInput('JOINT PLAT (SG00769)', 'jointPlat'),
+                                        createInput('JOINT TAMIS (SG 00777 DN50)', 'jointTamis'),
+                                        createInput('FLITRE (SG00767)', 'flitre'),
+                                        createInput('STAUBLI', 'staubli'),
+                                        createInput('MAMELON MALE 1/4', 'mamelonMale'),
+                                        createInput('TE LAITON/LAITON', 'teLaiton'),
+                                        createInput('COMPTEUR', 'compteur'),
+                                        createInput('ANTI-ROUILLE', 'antiRouille'),
+                                        createInput('PEINTURE', 'peinture'),
+                                        createInput('COULEUR (RAL)', 'couleurRAL')
+                                    )
+                                ),
+
+                                // Boulons
+                                h('div', { className: 'bg-white p-6 rounded-lg shadow' },
+                                    h('h2', { className: 'text-xl font-bold mb-4 text-purple-700' }, 'Boulons'),
+                                    h('div', { className: 'grid grid-cols-1 md:grid-cols-3 gap-4' },
+                                        h('div', { className: 'md:col-span-3' },
+                                            h('h3', { className: 'font-semibold mb-2' }, 'Entrée')
+                                        ),
+                                        createInput('Diamètre (Diam)', 'boulonsDiamEntree'),
+                                        createInput('Longueur (Long)', 'boulonsLongEntree'),
+                                        createInput('Quantité', 'boulonsEntree', 'number'),
+                                        h('div', { className: 'md:col-span-3 mt-4' },
+                                            h('h3', { className: 'font-semibold mb-2' }, 'Sortie')
+                                        ),
+                                        createInput('Diamètre (Diam)', 'boulonsDiamSortie'),
+                                        createInput('Longueur (Long)', 'boulonsLongSortie'),
+                                        createInput('Quantité', 'boulonsSortieQte', 'number')
+                                    )
+                                ),
+
+                                // Dimensions
+                                h('div', { className: 'bg-white p-6 rounded-lg shadow' },
+                                    h('h2', { className: 'text-xl font-bold mb-4 text-purple-700' }, 'Dimensions (cm)'),
+                                    h('div', { className: 'grid grid-cols-1 md:grid-cols-2 gap-6' },
+                                        h('div', null,
+                                            h('h3', { className: 'font-semibold mb-3' }, 'Position des boulons'),
+                                            h('div', { className: 'grid grid-cols-2 gap-4' },
+                                                createInput('Haut', 'dimensionHaut'),
+                                                createInput('Bas', 'dimensionBas'),
+                                                createInput('Gauche', 'dimensionGauche'),
+                                                createInput('Droite', 'dimensionDroite'),
+                                                h('div', { className: 'col-span-2' },
+                                                    createInput('Centre', 'dimensionCentre')
+                                                )
+                                            )
+                                        ),
+                                        h('div', null,
+                                            h('h3', { className: 'font-semibold mb-3' }, 'Hauteur compteur'),
+                                            createInput('Hauteur (cm)', 'hauteurCompteur')
+                                        )
+                                    )
+                                ),
+
+                                // Commentaires
+                                h('div', { className: 'bg-white p-6 rounded-lg shadow' },
+                                    h('h2', { className: 'text-xl font-bold mb-4 text-purple-700' }, 'Commentaires'),
+                                    h('div', null,
+                                        h('textarea', {
+                                            name: 'commentaires',
+                                            value: formData.commentaires,
+                                            onChange: handleInputChange,
+                                            rows: 4,
+                                            className: 'w-full p-2 border rounded',
+                                            placeholder: 'Notes et observations...'
+                                        })
+                                    )
+                                ),
+
+                                // Boutons
+                                h('div', { className: 'flex gap-4 justify-end' },
+                                    h('button', {
+                                        type: 'button',
+                                        onClick: () => {
+                                            if (confirm('Voulez-vous annuler ? Les données non sauvegardées seront perdues.')) {
+                                                resetForm();
+                                                setCurrentView('home');
+                                            }
+                                        },
+                                        className: 'px-6 py-3 bg-gray-400 text-white rounded-lg hover:bg-gray-500'
+                                    }, 'Annuler'),
+                                    h('button', {
+                                        type: 'submit',
+                                        className: 'px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2'
+                                    }, h(SaveIcon), ' Enregistrer la visite préalable')
+                                )
+                            )
+                        )
+                    );
+                }
+
+                return null;
+            }
+
+            const root = createRoot(document.getElementById('app'));
+            root.render(h(App));
         });
-        save(); renderTable(); showAlert('Import OK');
-      }
-    }catch(err){showAlert('Erreur import : '+err,false);}
-  };
-  r.readAsText(inp.files[0],'UTF-8');
-}
-/* ----------  ENVOI VERS GOOGLE DRIVE  ---------- */
-const SCRIPT_URL = 'https://script.google.com/home/projects/19vztwoaMO5L90U2kqSJr7rnHdZwUFz_sh2c_9HpIP-1Q5G1QdH9pCoxQ/exec';
-async function sendToGoogleDrive(){
-  const all=[...db.prelim,...db.interv];
-  if(!all.length){showAlert('Aucune donnée à envoyer');return;}
-
-  showAlert('Envoi en cours…',true);
-
-  for(const rec of all){
-    if(rec._sent) continue; // évite les doublons
-    try{
-      await fetch(SCRIPT_URL,{
-        method: 'POST',
-        body: JSON.stringify(rec),
-        headers:{'Content-Type':'application/json'}
-      });
-      rec._sent=true;
-    }catch(err){
-      showAlert('Erreur réseau : '+err,false);
-      return;
-    }
-  }
-  save(); // met à jour localStorage avec _sent
-  showAlert('Toutes les données ont été envoyées sur Google Drive !');
-}
-/************  INIT  ************/
-document.addEventListener('DOMContentLoaded',()=>{
-  document.querySelector('input[name=date]').valueAsDate=new Date();
-  buildPrelimTable();
-  renderTable();
-});</script>
+    </script>
 </body>
 </html>
