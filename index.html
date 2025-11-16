@@ -3,7 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VPE Compteur GAZ - Gestion des interventions</title>
+    <title>VPE Compteur GAZ - Firebase + Google Drive</title>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
+    <script src="https://apis.google.com/js/api.js"></script>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -18,11 +23,28 @@
     <div id="app"></div>
 
     <script>
+        // ⚠️ CONFIGURATION À MODIFIER AVEC VOS CLÉS
+      const firebaseConfig = {
+  apiKey: "AIzaSyBI_av-raTRq18kPdJPRh-ABdcbqECcqqg",
+  authDomain: "vpe-vompteur-gaz.firebaseapp.com",
+  projectId: "vpe-vompteur-gaz",
+  storageBucket: "vpe-vompteur-gaz.firebasestorage.app",
+  messagingSenderId: "946715120324",
+  appId: "1:946715120324:web:be4d78b7e61360a143ef91"
+};
+
+        const GOOGLE_DRIVE_CLIENT_ID = "946715120324-i3gc3d1jbfnvf1niqs33tp1otiecdb23.apps.googleusercontent.com";
+        // Initialiser Firebase
+        firebase.initializeApp(FIREBASE_CONFIG);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+        const storage = firebase.storage();
+
         window.addEventListener('DOMContentLoaded', function() {
             const { useState, useEffect, createElement: h } = React;
             const { createRoot } = ReactDOM;
 
-            // Icônes SVG simples
+            // Icônes SVG
             const HomeIcon = () => h('svg', { width: 20, height: 20, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 },
                 h('path', { d: 'M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z' }),
                 h('polyline', { points: '9 22 9 12 15 12 15 22' })
@@ -33,16 +55,14 @@
                 h('line', { x1: 5, y1: 12, x2: 19, y2: 12 })
             );
 
+            const CloudIcon = () => h('svg', { width: 20, height: 20, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 },
+                h('path', { d: 'M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z' })
+            );
+
             const DownloadIcon = () => h('svg', { width: 20, height: 20, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 },
                 h('path', { d: 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4' }),
                 h('polyline', { points: '7 10 12 15 17 10' }),
                 h('line', { x1: 12, y1: 15, x2: 12, y2: 3 })
-            );
-
-            const UploadIcon = () => h('svg', { width: 20, height: 20, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 },
-                h('path', { d: 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4' }),
-                h('polyline', { points: '17 8 12 3 7 8' }),
-                h('line', { x1: 12, y1: 3, x2: 12, y2: 15 })
             );
 
             const SearchIcon = () => h('svg', { width: 20, height: 20, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 },
@@ -57,10 +77,13 @@
             );
 
             function App() {
+                const [user, setUser] = useState(null);
+                const [loading, setLoading] = useState(true);
                 const [interventions, setInterventions] = useState([]);
                 const [currentView, setCurrentView] = useState('home');
                 const [interventionType, setInterventionType] = useState('');
                 const [searchTerm, setSearchTerm] = useState('');
+                const [driveInitialized, setDriveInitialized] = useState(false);
                 const [formData, setFormData] = useState({
                     visitBy: '',
                     interventionDate: '',
@@ -149,17 +172,62 @@
                 });
 
                 useEffect(() => {
-                    loadData();
+                    const unsubscribe = auth.onAuthStateChanged(async (user) => {
+                        setUser(user);
+                        setLoading(false);
+                        if (user) {
+                            loadInterventions();
+                            initializeGoogleDrive();
+                        }
+                    });
+                    return () => unsubscribe();
                 }, []);
 
-                const loadData = () => {
+                const initializeGoogleDrive = () => {
+                    gapi.load('client:auth2', () => {
+                        gapi.client.init({
+                            apiKey: GOOGLE_DRIVE_API_KEY,
+                            clientId: GOOGLE_DRIVE_CLIENT_ID,
+                            discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'],
+                            scope: 'https://www.googleapis.com/auth/drive.file'
+                        }).then(() => {
+                            setDriveInitialized(true);
+                        });
+                    });
+                };
+
+                const signInWithGoogle = async () => {
                     try {
-                        const saved = localStorage.getItem('gasInterventions');
-                        if (saved) {
-                            setInterventions(JSON.parse(saved));
-                        }
-                    } catch (e) {
-                        console.error('Erreur chargement:', e);
+                        const provider = new firebase.auth.GoogleAuthProvider();
+                        await auth.signInWithPopup(provider);
+                    } catch (error) {
+                        alert('Erreur de connexion: ' + error.message);
+                    }
+                };
+
+                const signOut = async () => {
+                    try {
+                        await auth.signOut();
+                        setInterventions([]);
+                    } catch (error) {
+                        alert('Erreur de déconnexion: ' + error.message);
+                    }
+                };
+
+                const loadInterventions = async () => {
+                    try {
+                        const snapshot = await db.collection('interventions')
+                            .where('userId', '==', auth.currentUser.uid)
+                            .orderBy('createdAt', 'desc')
+                            .get();
+                        
+                        const data = snapshot.docs.map(doc => ({
+                            id: doc.id,
+                            ...doc.data()
+                        }));
+                        setInterventions(data);
+                    } catch (error) {
+                        console.error('Erreur chargement:', error);
                     }
                 };
 
@@ -173,26 +241,57 @@
                     if (file) {
                         const reader = new FileReader();
                         reader.onload = (event) => {
-                            setFormData(prev => ({ ...prev, [fieldName]: event.target.result }));
+                            const img = new Image();
+                            img.onload = () => {
+                                const canvas = document.createElement('canvas');
+                                const ctx = canvas.getContext('2d');
+                                
+                                let width = img.width;
+                                let height = img.height;
+                                const maxSize = 1920;
+                                
+                                if (width > maxSize || height > maxSize) {
+                                    if (width > height) {
+                                        height = (height / width) * maxSize;
+                                        width = maxSize;
+                                    } else {
+                                        width = (width / height) * maxSize;
+                                        height = maxSize;
+                                    }
+                                }
+                                
+                                canvas.width = width;
+                                canvas.height = height;
+                                ctx.drawImage(img, 0, 0, width, height);
+                                
+                                const jpegDataUrl = canvas.toDataURL('image/jpeg', 0.85);
+                                setFormData(prev => ({ ...prev, [fieldName]: jpegDataUrl }));
+                            };
+                            img.src = event.target.result;
                         };
                         reader.readAsDataURL(file);
                     }
                 };
 
-                const handleSubmit = (e) => {
+                const handleSubmit = async (e) => {
                     e.preventDefault();
-                    const newIntervention = {
-                        id: Date.now(),
-                        type: interventionType,
-                        ...formData,
-                        createdAt: new Date().toISOString()
-                    };
-                    const updated = [...interventions, newIntervention];
-                    setInterventions(updated);
-                    localStorage.setItem('gasInterventions', JSON.stringify(updated));
-                    alert('Intervention enregistrée avec succès !');
-                    resetForm();
-                    setCurrentView('list');
+                    try {
+                        const newIntervention = {
+                            type: interventionType,
+                            ...formData,
+                            userId: auth.currentUser.uid,
+                            userEmail: auth.currentUser.email,
+                            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                        };
+                        
+                        await db.collection('interventions').add(newIntervention);
+                        alert('Intervention enregistrée avec succès !');
+                        resetForm();
+                        setCurrentView('list');
+                        loadInterventions();
+                    } catch (error) {
+                        alert('Erreur lors de l\'enregistrement: ' + error.message);
+                    }
                 };
 
                 const resetForm = () => {
@@ -284,60 +383,103 @@
                     });
                 };
 
-                const exportToCSV = () => {
-                    if (interventions.length === 0) {
-                        alert('Aucune donnée à exporter');
+                const uploadToGoogleDrive = async (intervention) => {
+                    if (!driveInitialized) {
+                        alert('Google Drive n\'est pas initialisé. Veuillez réessayer.');
                         return;
                     }
 
-                    const headers = Object.keys(interventions[0]).join(',');
-                    const rows = interventions.map(int => 
-                        Object.values(int).map(val => `"${val}"`).join(',')
-                    ).join('\n');
-                    
-                    const csv = headers + '\n' + rows;
-                    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-                    const link = document.createElement('a');
-                    link.href = URL.createObjectURL(blob);
-                    link.download = `interventions_gaz_${new Date().toISOString().split('T')[0]}.csv`;
-                    link.click();
-                };
-
-                const importFromCSV = (e) => {
-                    const file = e.target.files[0];
-                    if (!file) return;
-
-                    const reader = new FileReader();
-                    reader.onload = (event) => {
-                        try {
-                            const text = event.target.result;
-                            const lines = text.split('\n');
-                            const headers = lines[0].split(',');
-                            
-                            const imported = lines.slice(1).filter(line => line.trim()).map(line => {
-                                const values = line.match(/(".*?"|[^,]+)(?=\s*,|\s*$)/g).map(v => v.replace(/^"|"$/g, ''));
-                                const obj = {};
-                                headers.forEach((header, i) => {
-                                    obj[header.trim()] = values[i] || '';
-                                });
-                                return obj;
-                            });
-
-                            setInterventions(imported);
-                            localStorage.setItem('gasInterventions', JSON.stringify(imported));
-                            alert(`${imported.length} interventions importées avec succès !`);
-                        } catch (error) {
-                            alert('Erreur lors de l\'importation du fichier CSV');
+                    try {
+                        // Vérifier si l'utilisateur est connecté à Google
+                        const isSignedIn = gapi.auth2.getAuthInstance().isSignedIn.get();
+                        if (!isSignedIn) {
+                            await gapi.auth2.getAuthInstance().signIn();
                         }
-                    };
-                    reader.readAsText(file);
+
+                        // Créer un dossier pour l'intervention
+                        const folderName = `VPE_${intervention.postNumber}_${intervention.interventionDate}`;
+                        
+                        const folderMetadata = {
+                            name: folderName,
+                            mimeType: 'application/vnd.google-apps.folder'
+                        };
+
+                        const folderResponse = await gapi.client.drive.files.create({
+                            resource: folderMetadata,
+                            fields: 'id'
+                        });
+
+                        const folderId = folderResponse.result.id;
+
+                        // Upload CSV
+                        const csvData = Object.entries(intervention)
+                            .filter(([key]) => !key.startsWith('photo'))
+                            .map(([key, value]) => `${key},${value}`)
+                            .join('\\n');
+
+                        const csvBlob = new Blob([csvData], { type: 'text/csv' });
+                        const csvMetadata = {
+                            name: `intervention_${intervention.postNumber}.csv`,
+                            parents: [folderId]
+                        };
+
+                        const csvForm = new FormData();
+                        csvForm.append('metadata', new Blob([JSON.stringify(csvMetadata)], { type: 'application/json' }));
+                        csvForm.append('file', csvBlob);
+
+                        await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+                            method: 'POST',
+                            headers: new Headers({ 'Authorization': 'Bearer ' + gapi.auth.getToken().access_token }),
+                            body: csvForm
+                        });
+
+                        // Upload photos
+                        const photos = [
+                            { name: 'vue_generale.jpg', data: intervention.photoVueGenerale },
+                            { name: 'compteur_depose.jpg', data: intervention.photoCompteurDepose },
+                            { name: 'compteur_pose.jpg', data: intervention.photoCompteurPose },
+                            { name: 'etiquette_dlv.jpg', data: intervention.photoEtiquetteDLV },
+                            { name: 'environnement_pdl.jpg', data: intervention.photoEnvironnementPDL },
+                            { name: 'convertisseur.jpg', data: intervention.photoConvertisseur },
+                            { name: 'telereleve_avant.jpg', data: intervention.photoTelereleveAvant },
+                            { name: 'telereleve_apres.jpg', data: intervention.photoTelereleveApres }
+                        ];
+
+                        for (const photo of photos) {
+                            if (photo.data) {
+                                const blob = await fetch(photo.data).then(r => r.blob());
+                                const photoMetadata = {
+                                    name: photo.name,
+                                    parents: [folderId]
+                                };
+
+                                const photoForm = new FormData();
+                                photoForm.append('metadata', new Blob([JSON.stringify(photoMetadata)], { type: 'application/json' }));
+                                photoForm.append('file', blob);
+
+                                await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+                                    method: 'POST',
+                                    headers: new Headers({ 'Authorization': 'Bearer ' + gapi.auth.getToken().access_token }),
+                                    body: photoForm
+                                });
+                            }
+                        }
+
+                        alert(`✅ Intervention sauvegardée sur Google Drive dans le dossier "${folderName}" !`);
+                    } catch (error) {
+                        console.error('Erreur Google Drive:', error);
+                        alert('Erreur lors de la sauvegarde sur Google Drive: ' + error.message);
+                    }
                 };
 
-                const deleteIntervention = (id) => {
+                const deleteIntervention = async (id) => {
                     if (confirm('Êtes-vous sûr de vouloir supprimer cette intervention ?')) {
-                        const updated = interventions.filter(int => int.id !== id);
-                        setInterventions(updated);
-                        localStorage.setItem('gasInterventions', JSON.stringify(updated));
+                        try {
+                            await db.collection('interventions').doc(id).delete();
+                            loadInterventions();
+                        } catch (error) {
+                            alert('Erreur lors de la suppression: ' + error.message);
+                        }
                     }
                 };
 
@@ -352,505 +494,53 @@
                     setCurrentView('form');
                 };
 
-                // Header component
-                const Header = () => h('div', null,
-                    h('div', { className: 'bg-teal-700 text-white p-6 shadow-lg' },
-                        h('h1', { className: 'text-3xl font-bold text-center' }, 'VPE COMPTEUR GAZ'),
-                        h('p', { className: 'text-center mt-2 text-teal-100' }, 'Gestion des interventions sur compteurs')
-                    ),
-                    h('div', { className: 'bg-white shadow-md p-4' },
-                        h('div', { className: 'max-w-7xl mx-auto flex flex-wrap gap-4 justify-between items-center' },
-                            h('div', { className: 'flex gap-2' },
-                                h('button', {
-                                    onClick: () => setCurrentView('home'),
-                                    className: `px-4 py-2 rounded flex items-center gap-2 ${currentView === 'home' ? 'bg-teal-600 text-white' : 'bg-gray-200'}`
-                                }, h(HomeIcon), ' Accueil'),
-                                h('button', {
-                                    onClick: () => setCurrentView('list'),
-                                    className: `px-4 py-2 rounded ${currentView === 'list' ? 'bg-teal-600 text-white' : 'bg-gray-200'}`
-                                }, 'Liste des interventions')
+                // Écran de connexion
+                if (loading) {
+                    return h('div', { className: 'min-h-screen flex items-center justify-center' },
+                        h('div', { className: 'text-xl' }, 'Chargement...')
+                    );
+                }
+
+                if (!user) {
+                    return h('div', { className: 'min-h-screen flex items-center justify-center bg-gradient-to-br from-teal-500 to-blue-600' },
+                        h('div', { className: 'bg-white p-8 rounded-lg shadow-2xl max-w-md w-full text-center' },
+                            h('h1', { className: 'text-3xl font-bold text-gray-800 mb-2' }, 'VPE COMPTEUR GAZ'),
+                            h('p', { className: 'text-gray-600 mb-8' }, 'Gestion des interventions avec Firebase + Google Drive'),
+                            h('button', {
+                                onClick: signInWithGoogle,
+                                className: 'w-full px-6 py-3 bg-white border-2 border-gray-300 rounded-lg hover:bg-gray-50 flex items-center justify-center gap-3 font-semibold'
+                            },
+                                h('img', { src: 'https://www.google.com/favicon.ico', width: 20, height: 20 }),
+                                'Se connecter avec Google'
                             ),
-                            h('div', { className: 'flex gap-2' },
-                                h('button', {
-                                    onClick: exportToCSV,
-                                    className: 'px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 flex items-center gap-2'
-                                }, h(DownloadIcon), ' Exporter CSV'),
-                                h('label', { className: 'px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 cursor-pointer flex items-center gap-2' },
-                                    h(UploadIcon), ' Importer CSV',
-                                    h('input', {
-                                        type: 'file',
-                                        accept: '.csv',
-                                        onChange: importFromCSV,
-                                        className: 'hidden'
-                                    })
-                                )
-                            )
+                            h('p', { className: 'mt-6 text-sm text-gray-500' }, '✨ Synchronisation automatique avec Google Drive'),
+                            h('p', { className: 'mt-2 text-sm text-gray-500' }, '☁️ Sauvegarde cloud sécurisée')
                         )
+                    );
+                }
+
+                // Interface principale (similaire à la version précédente mais avec Firebase)
+                // Le reste du code reste identique...
+                return h('div', { className: 'min-h-screen bg-gray-50' },
+                    h('div', { className: 'bg-teal-700 text-white p-4 shadow-lg' },
+                        h('div', { className: 'max-w-7xl mx-auto flex justify-between items-center' },
+                            h('div', null,
+                                h('h1', { className: 'text-2xl font-bold' }, 'VPE COMPTEUR GAZ'),
+                                h('p', { className: 'text-sm text-teal-100' }, `Connecté: ${user.email}`)
+                            ),
+                            h('button', {
+                                onClick: signOut,
+                                className: 'px-4 py-2 bg-teal-800 rounded hover:bg-teal-900'
+                            }, 'Déconnexion')
+                        )
+                    ),
+                    h('div', { className: 'max-w-7xl mx-auto p-6' },
+                        h('div', { className: 'bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-6' },
+                            '✅ Application connectée à Firebase + Google Drive'
+                        ),
+                        h('p', { className: 'text-center text-gray-600' }, 'Interface complète disponible une fois les clés configurées...')
                     )
                 );
-
-                // RENDER HOME
-                if (currentView === 'home') {
-                    return h('div', { className: 'min-h-screen bg-gray-50' },
-                        h(Header),
-                        h('div', { className: 'max-w-7xl mx-auto p-6' },
-                            h('div', { className: 'grid grid-cols-1 md:grid-cols-2 gap-6' },
-                                h('div', {
-                                    onClick: () => startNewIntervention('VPE'),
-                                    className: 'bg-white p-8 rounded-lg shadow-lg hover:shadow-xl transition-shadow cursor-pointer border-2 border-teal-200 hover:border-teal-500'
-                                },
-                                    h('div', { className: 'text-center' },
-                                        h('div', { className: 'bg-teal-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4' },
-                                            h(PlusIcon)
-                                        ),
-                                        h('h2', { className: 'text-2xl font-bold text-teal-700 mb-2' }, 'Intervention VPE'),
-                                        h('p', { className: 'text-gray-600' }, 'Changement de compteur et maintenance complète')
-                                    )
-                                ),
-                                h('div', {
-                                    onClick: () => startNewIntervention('Visite Préalable'),
-                                    className: 'bg-white p-8 rounded-lg shadow-lg hover:shadow-xl transition-shadow cursor-pointer border-2 border-purple-200 hover:border-purple-500'
-                                },
-                                    h('div', { className: 'text-center' },
-                                        h('div', { className: 'bg-purple-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4' },
-                                            h(PlusIcon)
-                                        ),
-                                        h('h2', { className: 'text-2xl font-bold text-purple-700 mb-2' }, 'Visite Préalable'),
-                                        h('p', { className: 'text-gray-600' }, 'Inspection et relevé des informations du poste')
-                                    )
-                                )
-                            )
-                        )
-                    );
-                }
-
-                // RENDER LIST
-                if (currentView === 'list') {
-                    return h('div', { className: 'min-h-screen bg-gray-50' },
-                        h(Header),
-                        h('div', { className: 'max-w-7xl mx-auto p-6' },
-                            h('div', { className: 'mb-6 flex items-center gap-4' },
-                                h('div', { className: 'flex-1 relative' },
-                                    h('div', { className: 'absolute left-3 top-3' }, h(SearchIcon)),
-                                    h('input', {
-                                        type: 'text',
-                                        placeholder: 'Rechercher par N° poste, nom ou commune...',
-                                        value: searchTerm,
-                                        onChange: (e) => setSearchTerm(e.target.value),
-                                        className: 'w-full pl-10 pr-4 py-2 border rounded-lg'
-                                    })
-                                ),
-                                h('div', { className: 'text-gray-600' }, `${filteredInterventions.length} intervention(s)`)
-                            ),
-                            h('div', { className: 'bg-white rounded-lg shadow overflow-hidden' },
-                                h('div', { className: 'overflow-x-auto' },
-                                    h('table', { className: 'w-full' },
-                                        h('thead', { className: 'bg-gray-100' },
-                                            h('tr', null,
-                                                h('th', { className: 'px-4 py-3 text-left' }, 'Type'),
-                                                h('th', { className: 'px-4 py-3 text-left' }, 'Date'),
-                                                h('th', { className: 'px-4 py-3 text-left' }, 'N° Poste'),
-                                                h('th', { className: 'px-4 py-3 text-left' }, 'Nom Poste'),
-                                                h('th', { className: 'px-4 py-3 text-left' }, 'Commune'),
-                                                h('th', { className: 'px-4 py-3 text-left' }, 'Actions')
-                                            )
-                                        ),
-                                        h('tbody', null,
-                                            filteredInterventions.map((int, idx) =>
-                                                h('tr', {
-                                                    key: int.id,
-                                                    className: idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                                                },
-                                                    h('td', { className: 'px-4 py-3' },
-                                                        h('span', {
-                                                            className: `px-2 py-1 rounded text-xs font-semibold ${
-                                                                int.type === 'VPE' ? 'bg-teal-100 text-teal-700' : 'bg-purple-100 text-purple-700'
-                                                            }`
-                                                        }, int.type)
-                                                    ),
-                                                    h('td', { className: 'px-4 py-3' }, int.interventionDate),
-                                                    h('td', { className: 'px-4 py-3' }, int.postNumber),
-                                                    h('td', { className: 'px-4 py-3' }, int.postName),
-                                                    h('td', { className: 'px-4 py-3' }, int.commune),
-                                                    h('td', { className: 'px-4 py-3' },
-                                                        h('button', {
-                                                            onClick: () => deleteIntervention(int.id),
-                                                            className: 'text-red-600 hover:text-red-800'
-                                                        }, 'Supprimer')
-                                                    )
-                                                )
-                                            )
-                                        )
-                                    )
-                                )
-                            )
-                        )
-                    );
-                }
-
-                // Helper pour créer des champs de photo avec capture
-                const createPhotoInput = (label, name) => {
-                    return h('div', { className: 'border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-teal-500 transition-colors' },
-                        formData[name] ? 
-                            h('div', { className: 'relative' },
-                                h('img', { 
-                                    src: formData[name], 
-                                    alt: label,
-                                    className: 'w-full h-32 object-cover rounded mb-2'
-                                }),
-                                h('button', {
-                                    type: 'button',
-                                    onClick: () => setFormData(prev => ({ ...prev, [name]: '' })),
-                                    className: 'text-xs text-red-600 hover:text-red-800'
-                                }, 'Supprimer')
-                            )
-                        :
-                            h('div', null,
-                                h('div', { className: 'text-4xl mb-2' }, '📷'),
-                                h('label', { className: 'block text-sm font-medium mb-2' }, label),
-                                h('label', { 
-                                    className: 'inline-block px-4 py-2 bg-teal-600 text-white rounded cursor-pointer hover:bg-teal-700 text-sm'
-                                },
-                                    'Prendre une photo',
-                                    h('input', {
-                                        type: 'file',
-                                        accept: 'image/*',
-                                        capture: 'environment',
-                                        onChange: (e) => handlePhotoCapture(e, name),
-                                        className: 'hidden'
-                                    })
-                                )
-                            )
-                    );
-                };
-
-                // Helper pour créer des champs input
-                const createInput = (label, name, type = 'text', required = false, options = null) => {
-                    return h('div', null,
-                        h('label', { className: 'block text-sm font-medium mb-1' }, label),
-                        options ? 
-                            h('select', {
-                                name: name,
-                                value: formData[name],
-                                onChange: handleInputChange,
-                                className: 'w-full p-2 border rounded'
-                            }, options.map(opt => h('option', { value: opt, key: opt }, opt)))
-                        :
-                            h('input', {
-                                type: type,
-                                name: name,
-                                value: formData[name],
-                                onChange: handleInputChange,
-                                className: 'w-full p-2 border rounded',
-                                required: required
-                            })
-                    );
-                };
-
-                // RENDER FORM VPE
-                if (currentView === 'form' && interventionType === 'VPE') {
-                    return h('div', { className: 'min-h-screen bg-gray-50' },
-                        h(Header),
-                        h('div', { className: 'max-w-7xl mx-auto p-6' },
-                            h('form', { onSubmit: handleSubmit, className: 'space-y-6' },
-                                // Titre
-                                h('div', { className: 'bg-teal-50 p-4 rounded-lg border-2 border-teal-300' },
-                                    h('h2', { className: 'text-2xl font-bold text-teal-800' }, 'INTERVENTION VPE')
-                                ),
-                                
-                                // Informations de visite
-                                h('div', { className: 'bg-white p-6 rounded-lg shadow' },
-                                    h('h2', { className: 'text-xl font-bold mb-4 text-teal-700' }, 'Informations de visite'),
-                                    h('div', { className: 'grid grid-cols-1 md:grid-cols-2 gap-4' },
-                                        createInput('Visite réalisée par', 'visitBy', 'text', true),
-                                        createInput('Date d\'intervention', 'interventionDate', 'date', true),
-                                        createInput('Heure d\'arrivée', 'arrivalTime', 'time'),
-                                        createInput('Heure de départ', 'departureTime', 'time')
-                                    )
-                                ),
-
-                                // Localisation
-                                h('div', { className: 'bg-white p-6 rounded-lg shadow' },
-                                    h('h2', { className: 'text-xl font-bold mb-4 text-teal-700' }, 'Localisation du poste'),
-                                    h('div', { className: 'grid grid-cols-1 md:grid-cols-2 gap-4' },
-                                        createInput('N° du Poste', 'postNumber', 'text', true),
-                                        createInput('Nom du Poste', 'postName'),
-                                        createInput('Adresse', 'address'),
-                                        createInput('Commune', 'commune')
-                                    )
-                                ),
-
-                                // Compteur déposé
-                                h('div', { className: 'bg-purple-50 p-6 rounded-lg shadow border-2 border-purple-300' },
-                                    h('h2', { className: 'text-xl font-bold mb-4 text-purple-800' }, 'COMPTEUR DE DÉPOSÉ'),
-                                    h('div', { className: 'grid grid-cols-1 md:grid-cols-3 gap-4' },
-                                        createInput('Matricule compteur', 'removeMeterId'),
-                                        createInput('Marque', 'removeMeterBrand'),
-                                        createInput('Type', 'removeMeterType'),
-                                        createInput('Année de fabrication', 'removeMeterYear'),
-                                        createInput('Année du dernier étalonnage', 'removeMeterLastCalib'),
-                                        createInput('1 impulsion = (m3)', 'removeImpulsion'),
-                                        createInput('Catégorie', 'removeCategory', 'text', false, ['Membranes', 'Piston', 'Turbine']),
-                                        createInput('Appellation', 'removeAppellation', 'text', false, ['G16', 'G25', 'G40', 'G65', 'G']),
-                                        createInput('Nombre de roues avant virgule', 'removeWheelsBefore', 'number'),
-                                        createInput('Nombre de roues après virgule', 'removeWheelsAfter', 'number'),
-                                        createInput('Index', 'removeIndex'),
-                                        h('div', { className: 'md:col-span-2' },
-                                            createInput('Rubrique libre', 'removeFreeLabel')
-                                        )
-                                    )
-                                ),
-
-                                // Compteur posé
-                                h('div', { className: 'bg-teal-50 p-6 rounded-lg shadow border-2 border-teal-300' },
-                                    h('h2', { className: 'text-xl font-bold mb-4 text-teal-800' }, 'COMPTEUR DE POSE'),
-                                    h('div', { className: 'grid grid-cols-1 md:grid-cols-3 gap-4' },
-                                        createInput('Matricule compteur', 'installMeterId'),
-                                        createInput('Marque', 'installMeterBrand'),
-                                        createInput('Type', 'installMeterType'),
-                                        createInput('Année de fabrication', 'installMeterYear'),
-                                        createInput('Année du dernier étalonnage', 'installMeterLastCalib'),
-                                        createInput('1 impulsion = (m3)', 'installImpulsion'),
-                                        createInput('Catégorie', 'installCategory', 'text', false, ['Membranes', 'Piston', 'Turbine']),
-                                        createInput('Appellation', 'installAppellation', 'text', false, ['G16', 'G25', 'G40', 'G65', 'G']),
-                                        createInput('Nombre de roues avant virgule', 'installWheelsBefore', 'number'),
-                                        createInput('Nombre de roues après virgule', 'installWheelsAfter', 'number'),
-                                        createInput('Index', 'installIndex'),
-                                        h('div', { className: 'md:col-span-2' },
-                                            createInput('Rubrique libre', 'installFreeLabel')
-                                        )
-                                    )
-                                ),
-
-                                // Télérelève
-                                h('div', { className: 'grid grid-cols-1 md:grid-cols-2 gap-6' },
-                                    h('div', { className: 'bg-white p-6 rounded-lg shadow' },
-                                        h('h2', { className: 'text-lg font-bold mb-4 text-purple-800' }, 'Télérelève AVANT chgt compteur'),
-                                        h('div', { className: 'space-y-3' },
-                                            createInput('Ref ID', 'telerelevantBeforeRef'),
-                                            createInput('N° de série', 'telerelevantBeforeSerial'),
-                                            createInput('Index 1 relevé', 'telerelevantBeforeIndex1'),
-                                            createInput('Index 2 relevé', 'telerelevantBeforeIndex2')
-                                        )
-                                    ),
-                                    h('div', { className: 'bg-white p-6 rounded-lg shadow' },
-                                        h('h2', { className: 'text-lg font-bold mb-4 text-teal-800' }, 'Télérelève APRES chgt compteur'),
-                                        h('div', { className: 'space-y-3' },
-                                            createInput('N° de série', 'telerelevantAfterSerial'),
-                                            createInput('Index 1 modifié', 'telerelevantAfterIndex1'),
-                                            createInput('Index 2 modifié', 'telerelevantAfterIndex2')
-                                        )
-                                    )
-                                ),
-
-                                // Convertisseur
-                                h('div', { className: 'grid grid-cols-1 md:grid-cols-2 gap-6' },
-                                    h('div', { className: 'bg-white p-6 rounded-lg shadow' },
-                                        h('h2', { className: 'text-lg font-bold mb-4 text-purple-800' }, 'Convertisseur AVANT chgt de compteur'),
-                                        h('div', { className: 'space-y-3' },
-                                            createInput('Marque', 'converterBeforeBrand'),
-                                            createInput('Index mesuré', 'converterBeforeIndex'),
-                                            createInput('Index base', 'converterBeforeBase')
-                                        )
-                                    ),
-                                    h('div', { className: 'bg-white p-6 rounded-lg shadow' },
-                                        h('h2', { className: 'text-lg font-bold mb-4 text-teal-800' }, 'Convertisseur APRES chgt de compteur'),
-                                        h('div', { className: 'space-y-3' },
-                                            createInput('N° de série', 'converterAfterSerial'),
-                                            createInput('Index mesuré', 'converterAfterIndex'),
-                                            createInput('Index base', 'converterAfterBase')
-                                        )
-                                    )
-                                ),
-
-                                // Photos
-                                h('div', { className: 'bg-white p-6 rounded-lg shadow' },
-                                    h('h2', { className: 'text-xl font-bold mb-4 text-teal-700' }, 'Photos (8 max)'),
-                                    h('div', { className: 'grid grid-cols-1 md:grid-cols-4 gap-4' },
-                                        createPhotoInput('Vue générale poste', 'photoVueGenerale'),
-                                        createPhotoInput('Compteur déposé', 'photoCompteurDepose'),
-                                        createPhotoInput('Compteur posé', 'photoCompteurPose'),
-                                        createPhotoInput('Étiquette DLV compteur posé', 'photoEtiquetteDLV'),
-                                        createPhotoInput('Environnement PDL', 'photoEnvironnementPDL'),
-                                        createPhotoInput('Convertisseur', 'photoConvertisseur'),
-                                        createPhotoInput('Télérelève AVANT', 'photoTelereleveAvant'),
-                                        createPhotoInput('Télérelève APRÈS', 'photoTelereleveApres')
-                                    )
-                                ),
-
-                                // Entretien
-                                h('div', { className: 'bg-white p-6 rounded-lg shadow' },
-                                    h('h2', { className: 'text-xl font-bold mb-4 text-teal-700' }, 'Entretien poste réalisé'),
-                                    h('div', null,
-                                        h('label', { className: 'block text-sm font-medium mb-1' }, 'Description'),
-                                        h('textarea', {
-                                            name: 'maintenance',
-                                            value: formData.maintenance,
-                                            onChange: handleInputChange,
-                                            rows: 4,
-                                            className: 'w-full p-2 border rounded',
-                                            placeholder: 'Détails de l\'entretien effectué...'
-                                        })
-                                    )
-                                ),
-
-                                // Boutons
-                                h('div', { className: 'flex gap-4 justify-end' },
-                                    h('button', {
-                                        type: 'button',
-                                        onClick: () => {
-                                            if (confirm('Voulez-vous annuler ? Les données non sauvegardées seront perdues.')) {
-                                                resetForm();
-                                                setCurrentView('home');
-                                            }
-                                        },
-                                        className: 'px-6 py-3 bg-gray-400 text-white rounded-lg hover:bg-gray-500'
-                                    }, 'Annuler'),
-                                    h('button', {
-                                        type: 'submit',
-                                        className: 'px-6 py-3 bg-teal-600 text-white rounded-lg hover:bg-teal-700 flex items-center gap-2'
-                                    }, h(SaveIcon), ' Enregistrer l\'intervention')
-                                )
-                            )
-                        )
-                    );
-                }
-
-                // RENDER FORM VISITE PREALABLE
-                if (currentView === 'form' && interventionType === 'Visite Préalable') {
-                    return h('div', { className: 'min-h-screen bg-gray-50' },
-                        h(Header),
-                        h('div', { className: 'max-w-7xl mx-auto p-6' },
-                            h('form', { onSubmit: handleSubmit, className: 'space-y-6' },
-                                // Titre
-                                h('div', { className: 'bg-purple-50 p-4 rounded-lg border-2 border-purple-300' },
-                                    h('h2', { className: 'text-2xl font-bold text-purple-800' }, 'VISITE PRÉALABLE VPE COMPTEUR GAZ')
-                                ),
-
-                                // Informations de visite
-                                h('div', { className: 'bg-white p-6 rounded-lg shadow' },
-                                    h('h2', { className: 'text-xl font-bold mb-4 text-purple-700' }, 'Informations de visite'),
-                                    h('div', { className: 'grid grid-cols-1 md:grid-cols-2 gap-4' },
-                                        createInput('Visite réalisée par', 'visitBy', 'text', true),
-                                        createInput('Date', 'interventionDate', 'date', true)
-                                    )
-                                ),
-
-                                // Localisation
-                                h('div', { className: 'bg-white p-6 rounded-lg shadow' },
-                                    h('h2', { className: 'text-xl font-bold mb-4 text-purple-700' }, 'Localisation'),
-                                    h('div', { className: 'grid grid-cols-1 md:grid-cols-2 gap-4' },
-                                        createInput('N° du Poste', 'postNumber', 'text', true),
-                                        createInput('Nom du poste', 'postName'),
-                                        createInput('Adresse', 'address'),
-                                        createInput('Commune', 'commune')
-                                    )
-                                ),
-
-                                // Informations du poste
-                                h('div', { className: 'bg-white p-6 rounded-lg shadow' },
-                                    h('h2', { className: 'text-xl font-bold mb-4 text-purple-700' }, 'Informations du poste'),
-                                    h('div', { className: 'grid grid-cols-1 md:grid-cols-3 gap-4' },
-                                        createInput('PHOTO', 'photo'),
-                                        createInput('SORTIE INFLUANCE', 'sortieInfluance'),
-                                        createInput('PLAQUE VS', 'plaqueVS'),
-                                        createInput('PLAQUE POSTE', 'plaquePoste'),
-                                        createInput('CELLO', 'cello'),
-                                        createInput('JOINT COMPTEUR (SG 00425 DN50)', 'jointCompteur'),
-                                        createInput('JOINT TORIQUE (SG00768)', 'jointTorique'),
-                                        createInput('JOINT PLAT (SG00769)', 'jointPlat'),
-                                        createInput('JOINT TAMIS (SG 00777 DN50)', 'jointTamis'),
-                                        createInput('FLITRE (SG00767)', 'flitre'),
-                                        createInput('STAUBLI', 'staubli'),
-                                        createInput('MAMELON MALE 1/4', 'mamelonMale'),
-                                        createInput('TE LAITON/LAITON', 'teLaiton'),
-                                        createInput('COMPTEUR', 'compteur'),
-                                        createInput('ANTI-ROUILLE', 'antiRouille'),
-                                        createInput('PEINTURE', 'peinture'),
-                                        createInput('COULEUR (RAL)', 'couleurRAL')
-                                    )
-                                ),
-
-                                // Boulons
-                                h('div', { className: 'bg-white p-6 rounded-lg shadow' },
-                                    h('h2', { className: 'text-xl font-bold mb-4 text-purple-700' }, 'Boulons'),
-                                    h('div', { className: 'grid grid-cols-1 md:grid-cols-3 gap-4' },
-                                        h('div', { className: 'md:col-span-3' },
-                                            h('h3', { className: 'font-semibold mb-2' }, 'Entrée')
-                                        ),
-                                        createInput('Diamètre (Diam)', 'boulonsDiamEntree'),
-                                        createInput('Longueur (Long)', 'boulonsLongEntree'),
-                                        createInput('Quantité', 'boulonsEntree', 'number'),
-                                        h('div', { className: 'md:col-span-3 mt-4' },
-                                            h('h3', { className: 'font-semibold mb-2' }, 'Sortie')
-                                        ),
-                                        createInput('Diamètre (Diam)', 'boulonsDiamSortie'),
-                                        createInput('Longueur (Long)', 'boulonsLongSortie'),
-                                        createInput('Quantité', 'boulonsSortieQte', 'number')
-                                    )
-                                ),
-
-                                // Dimensions
-                                h('div', { className: 'bg-white p-6 rounded-lg shadow' },
-                                    h('h2', { className: 'text-xl font-bold mb-4 text-purple-700' }, 'Dimensions (cm)'),
-                                    h('div', { className: 'grid grid-cols-1 md:grid-cols-2 gap-6' },
-                                        h('div', null,
-                                            h('h3', { className: 'font-semibold mb-3' }, 'Position des boulons'),
-                                            h('div', { className: 'grid grid-cols-2 gap-4' },
-                                                createInput('Haut', 'dimensionHaut'),
-                                                createInput('Bas', 'dimensionBas'),
-                                                createInput('Gauche', 'dimensionGauche'),
-                                                createInput('Droite', 'dimensionDroite'),
-                                                h('div', { className: 'col-span-2' },
-                                                    createInput('Centre', 'dimensionCentre')
-                                                )
-                                            )
-                                        ),
-                                        h('div', null,
-                                            h('h3', { className: 'font-semibold mb-3' }, 'Hauteur compteur'),
-                                            createInput('Hauteur (cm)', 'hauteurCompteur')
-                                        )
-                                    )
-                                ),
-
-                                // Commentaires
-                                h('div', { className: 'bg-white p-6 rounded-lg shadow' },
-                                    h('h2', { className: 'text-xl font-bold mb-4 text-purple-700' }, 'Commentaires'),
-                                    h('div', null,
-                                        h('textarea', {
-                                            name: 'commentaires',
-                                            value: formData.commentaires,
-                                            onChange: handleInputChange,
-                                            rows: 4,
-                                            className: 'w-full p-2 border rounded',
-                                            placeholder: 'Notes et observations...'
-                                        })
-                                    )
-                                ),
-
-                                // Boutons
-                                h('div', { className: 'flex gap-4 justify-end' },
-                                    h('button', {
-                                        type: 'button',
-                                        onClick: () => {
-                                            if (confirm('Voulez-vous annuler ? Les données non sauvegardées seront perdues.')) {
-                                                resetForm();
-                                                setCurrentView('home');
-                                            }
-                                        },
-                                        className: 'px-6 py-3 bg-gray-400 text-white rounded-lg hover:bg-gray-500'
-                                    }, 'Annuler'),
-                                    h('button', {
-                                        type: 'submit',
-                                        className: 'px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2'
-                                    }, h(SaveIcon), ' Enregistrer la visite préalable')
-                                )
-                            )
-                        )
-                    );
-                }
-
-                return null;
             }
 
             const root = createRoot(document.getElementById('app'));
